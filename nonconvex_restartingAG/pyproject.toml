@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0", "numpy>=1.16.6", "numba>=0.54.1", "cupy>=10.6.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nonconvex_restartingAG_kyang"
+version = "0.0.1"
+authors = [
+  { name="Kai Yang", email="kai.yang2@mail.mcgill.ca" },
+]
+description = "Implementation of restarting accelerated gradient algorithm with strong rules for (high-dimensional) nonconvex sparse learning problems."
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Kaiyangshi-Ito/nonconvex_restartingAG"
+"Bug Tracker" = "https://github.com/Kaiyangshi-Ito/nonconvex_restartingAG/issues"
