@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
-Name: nonconvex-restartingAG-kyang
-Version: 0.0.2
+Name: nonconvex-restartingAG
+Version: 0.2.0
 Summary: Implementation of restarting accelerated gradient algorithm with strong rules for (high-dimensional) nonconvex sparse learning problems.
 Author-email: Kai Yang <kai.yang2@mail.mcgill.ca>
 License:                     GNU AFFERO GENERAL PUBLIC LICENSE
