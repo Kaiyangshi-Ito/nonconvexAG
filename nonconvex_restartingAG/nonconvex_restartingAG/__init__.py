@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Set up the class fundementals 
-
-# In[1]:
-
 
 # import os, sys
 # import collections
@@ -28,12 +24,13 @@ from numba import jit, njit
 #     "font.family": "Times New Roman",
 #     "font.sans-serif": ["Times New Roman"],
 #     "font.size": 12})
+import multiprocess as mp
 
 # os.chdir(sys.path[0]) # ensure working direcotry is set same as the file
 
-
-# In[2]:
-
+############################################################
+######### set up fundamentals based on numba ###############
+############################################################
 
 ######################################  some SCAD and MCP things  #######################################
 @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
@@ -140,11 +137,9 @@ def MCP_concave_grad(x, lambda_, gamma):
     temp[0] = 0. # this is to NOT penalize intercept beta later 
     return temp 
 
-
-# # Implementation
-
-# In[3]:
-
+#############################################################
+############ LM normal memory ###############################
+#############################################################
 
 @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def update_smooth_grad_convex_LM(N, X, beta_md, y):
@@ -503,6 +498,390 @@ def solution_path_LM_strongrule(design_matrix, outcome, lambda_, beta_0 = np.one
     return beta_mat[1:,:]
 
 
+####################################################################
+############## LM memory mapping ###################################
+####################################################################
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def _memmap_update_smooth_grad_convex_LM(N, p, X, beta_md, y, _dtype, _order):
+    '''
+    Update the gradient of the smooth convex objective component.
+    '''
+    _itemsize = np.dtype(_dtype).itemsize
+    # first calcualte _=X@beta_md-y
+    _ = np.zeros(N)
+    if _order == "F":
+        for j in np.arange(p):
+            _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
+            _ += _X*beta_md[j]
+    elif _order == "C":
+        for j in np.arange(N):
+            _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
+            _[j] = _X@beta_md
+    _ -= y
+    # then calculate _XTXbeta = X.T@X@beta_md = X.T@_
+    _XTXbeta = np.zeros(p)
+    if _order == "F":
+        for j in np.arange(p):
+            _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
+            _XTXbeta[j] = _X@_
+    elif _order == "C":
+        for j in np.arange(N):
+            _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
+            _XTXbeta += _X*_[j]
+    del _
+    return 1/N*_XTXbeta
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def _memmap_update_smooth_grad_SCAD_LM(N, p, X, beta_md, y, _lambda, a, _dtype, _order):
+    '''
+    Update the gradient of the smooth objective component for SCAD penalty.
+    '''
+    return _memmap_update_smooth_grad_convex_LM(N=N, p=p, X=X, beta_md=beta_md, y=y, _dtype=_dtype, _order=_order) + SCAD_concave_grad(x=beta_md, lambda_=_lambda, a=a)
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def _memmap_update_smooth_grad_MCP_LM(N, p, X, beta_md, y, _lambda, gamma, _dtype, _order):
+    '''
+    Update the gradient of the smooth objective component for MCP penalty.
+    '''
+    return _memmap_update_smooth_grad_convex_LM(N=N, p=p, X=X, beta_md=beta_md, y=y, _dtype=_dtype, _order=_order) + MCP_concave_grad(x=beta_md, lambda_=_lambda, gamma=gamma)
+
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def _memmap_lambda_max_LM(X, y, N, p, _dtype, _order):
+    """
+    Calculate the lambda_max, i.e., the minimum lambda to nullify all penalized betas.
+    """
+#     X_temp = X.copy()
+#     X_temp = X_temp[:,1:]
+#     X_temp -= np.mean(X_temp,0).reshape(1,-1)
+#     X_temp /= np.std(X_temp,0)
+#     y_temp = y.copy()
+#     y_temp -= np.mean(y)
+#     y_temp /= np.std(y)
+
+    grad_at_0 = _memmap_update_smooth_grad_convex_LM(N=N, p=p, X=X, beta_md=np.zeros(p), y=y, _dtype=_dtype, _order=_order)
+    lambda_max = np.linalg.norm(grad_at_0[1:], ord=np.infty)
+    return lambda_max
+
+
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def memmap_UAG_LM_SCAD_MCP(design_matrix, outcome, N, p, L_convex, _dtype, _order, beta_0 = np.ones(1), tol=1e-2, maxit=500, _lambda=.5, penalty="SCAD", a=3.7, gamma=2.):
+    '''
+    Carry out the optimization for penalized LM for a fixed lambda.
+    '''
+    X = design_matrix
+    y = outcome
+    _itemsize = np.dtype(_dtype).itemsize
+    if np.all(beta_0==np.ones(1)):
+        _ = np.zeros(p)
+        if _order == "F":
+            for j in np.arange(p):
+                _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
+                _[j] = _X@y
+        elif _order == "C":
+            for j in np.arange(N):
+                _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
+                _ += _X*y[j]
+        beta = np.sign(_)
+    else:
+        beta = beta_0
+    # passing other parameters
+    smooth_grad = np.ones(p)
+    beta_ag = beta.copy()
+    beta_md = beta.copy()
+    k = 0
+    converged = False
+    opt_alpha = 1.
+    old_speed_norm = 1.
+    speed_norm = 1.
+    restart_k = 0
+    
+    if penalty == "SCAD":
+#         L = np.max(np.array([L_convex, 1./(a-1)]))
+        L = np.linalg.norm(np.array([L_convex, 1./(a-1)]), ord=np.infty)
+        opt_beta = .99/L
+        while ((not converged) or (k<3)) and k <= maxit:
+            k += 1
+            if old_speed_norm > speed_norm and k - restart_k>=3: # in this case, restart
+                opt_alpha = 1. # restarting
+                restart_k = k # restarting
+            else: # restarting
+                opt_alpha = 2/(1+(1+4./opt_alpha**2)**.5) #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound 
+            opt_lambda = opt_beta/opt_alpha #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound
+            beta_md_old = beta_md.copy() # restarting
+            beta_md = (1-opt_alpha)*beta_ag + opt_alpha*beta
+            old_speed_norm = speed_norm # restarting
+            speed_norm = np.linalg.norm(beta_md - beta_md_old, ord=2) # restarting
+            converged = (np.linalg.norm(beta_md - beta_md_old, ord=np.infty) < tol)
+            smooth_grad = _memmap_update_smooth_grad_SCAD_LM(N=N, p=p, X=X, beta_md=beta_md, y=y, _lambda=_lambda, a=a, _dtype=_dtype, _order=_order)
+            beta = soft_thresholding(x=beta - opt_lambda*smooth_grad, lambda_=opt_lambda*_lambda)
+            beta_ag = soft_thresholding(x=beta_md - opt_beta*smooth_grad, lambda_=opt_beta*_lambda)
+#             converged = np.all(np.max(np.abs(beta_md - beta_ag)/opt_beta) < tol).item()
+#             converged = (np.linalg.norm(beta_md - beta_ag, ord=np.infty) < (tol*opt_beta))
+    else:
+#         L = np.max(np.array([L_convex, 1./(gamma)]))
+        L = np.linalg.norm(np.array([L_convex, 1./(gamma)]), ord=np.infty)
+        opt_beta = .99/L
+        while ((not converged) or (k<3)) and k <= maxit:
+            k += 1
+            if old_speed_norm > speed_norm and k - restart_k>=3: # in this case, restart
+                opt_alpha = 1. # restarting
+                restart_k = k # restarting
+            else: # restarting
+                opt_alpha = 2/(1+(1+4./opt_alpha**2)**.5) #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound 
+            opt_lambda = opt_beta/opt_alpha #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound
+            beta_md_old = beta_md.copy() # restarting
+            beta_md = (1-opt_alpha)*beta_ag + opt_alpha*beta
+            old_speed_norm = speed_norm # restarting
+            speed_norm = np.linalg.norm(beta_md - beta_md_old, ord=2) # restarting
+            converged = (np.linalg.norm(beta_md - beta_md_old, ord=np.infty) < tol)
+            smooth_grad = _memmap_update_smooth_grad_MCP_LM(N=N, p=p, X=X, beta_md=beta_md, y=y, _lambda=_lambda, gamma=gamma, _dtype=_dtype, _order=_order)
+            beta = soft_thresholding(x=beta - opt_lambda*smooth_grad, lambda_=opt_lambda*_lambda)
+            beta_ag = soft_thresholding(x=beta_md - opt_beta*smooth_grad, lambda_=opt_beta*_lambda)
+#             converged = np.all(np.max(np.abs(beta_md - beta_ag)/opt_beta) < tol).item()
+#             converged = (np.linalg.norm(beta_md - beta_ag, ord=np.infty) < (tol*opt_beta))
+    return k, beta_md
+
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def memmap_solution_path_LM(design_matrix, outcome, lambda_, L_convex, N, p, beta_0 = np.ones(1), tol=1e-2, maxit=500, penalty="SCAD", a=3.7, gamma=2., _dtype='float32', _order="F"):
+    '''
+    Carry out the optimization for the solution path without the strong rule.
+    '''
+    beta_mat = np.zeros((len(lambda_)+1, p))
+    for j in range(len(lambda_)): 
+        beta_mat[j+1,:] = memmap_UAG_LM_SCAD_MCP(design_matrix=design_matrix, outcome=outcome, N=N, p=p, L_convex=L_convex, beta_0 = beta_mat[j,:], tol=tol, maxit=maxit, _lambda=lambda_[j], penalty=penalty, a=a, gamma=gamma, _dtype=_dtype, _order=_order,)[1]
+    return beta_mat[1:,:]
+
+
+
+####################################################################
+########## LM memory mapping with multiprocessing ##################
+####################################################################
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def _memmap_update_smooth_grad_convex_LM_parallel(N, p, X, beta_md, y, _dtype, _order, chunck_size=50000):
+    '''
+    Update the gradient of the smooth convex objective component.
+    '''
+    _itemsize = np.dtype(_dtype).itemsize
+    # first calcualte _=X@beta_md-y
+    if _order == "F":
+        def __parallel_plus(_ind):
+            import numpy as np
+            __ = np.zeros(N)
+            for j in _ind:
+                _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
+                __ += _X*beta_md[j]
+            return __
+        # multiprocessing starts here
+        ind = np.arange(p)
+        n_slices = np.ceil(len(ind)/chunck_size)
+        with mp.Pool(mp.cpu_count()) as pl:
+            _ = pl.map(__parallel_plus, np.array_split(ind, n_slices))
+        _ = np.array(_).sum(0)
+    elif _order == "C":
+        def __parallel_assign(_ind):
+            import numpy as np
+            k=0
+            __ = np.zeros(len(_ind))
+            for j in _ind:
+                _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
+                __[k] = _X@beta_md
+                k += 1
+            return __
+        # multiprocessing starts here
+        ind = np.arange(N)
+        n_slices = np.ceil(len(ind)/chunck_size)
+        with mp.Pool(mp.cpu_count()) as pl:
+            _ = pl.map(__parallel_assign, np.array_split(ind, n_slices))
+        _ = np.hstack(_)
+    _ -= y
+    # then calculate _XTXbeta = X.T@X@beta_md = X.T@_
+    if _order == "F":
+        def __parallel_assign(_ind):
+            import numpy as np
+            k=0
+            __ = np.zeros(len(_ind))
+            for j in _ind:
+                _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
+                __[k] = _X@_
+                k += 1
+            return __
+        # multiprocessing starts here
+        ind = np.arange(p)
+        n_slices = np.ceil(len(ind)/chunck_size)
+        with mp.Pool(mp.cpu_count()) as pl:
+            _XTXbeta = pl.map(__parallel_assign, np.array_split(ind, n_slices))
+        _XTXbeta = np.hstack(_XTXbeta)
+    elif _order == "C":
+        def __parallel_plus(_ind):
+            import numpy as np
+            __ = np.zeros(p)
+            for j in _ind:
+                _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
+                __ += _X*_[j]
+            return __
+        # multiprocessing starts here
+        ind = np.arange(N)
+        n_slices = np.ceil(len(ind)/chunck_size)
+        with mp.Pool(mp.cpu_count()) as pl:
+            _XTXbeta = pl.map(__parallel_plus, np.array_split(ind, n_slices))
+        _XTXbeta = np.array(_XTXbeta).sum(0)
+    del _
+    return 1/N*_XTXbeta
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def _memmap_update_smooth_grad_SCAD_LM_parallel(N, p, X, beta_md, y, _lambda, a, _dtype, _order, chunck_size):
+    '''
+    Update the gradient of the smooth objective component for SCAD penalty.
+    '''
+    return _memmap_update_smooth_grad_convex_LM_parallel(N=N, p=p, X=X, beta_md=beta_md, y=y, _dtype=_dtype, _order=_order, chunck_size=chunck_size) + SCAD_concave_grad(x=beta_md, lambda_=_lambda, a=a)
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def _memmap_update_smooth_grad_MCP_LM_parallel(N, p, X, beta_md, y, _lambda, gamma, _dtype, _order, chunck_size):
+    '''
+    Update the gradient of the smooth objective component for MCP penalty.
+    '''
+    return _memmap_update_smooth_grad_convex_LM_parallel(N=N, p=p, X=X, beta_md=beta_md, y=y, _dtype=_dtype, _order=_order, chunck_size=chunck_size) + MCP_concave_grad(x=beta_md, lambda_=_lambda, gamma=gamma)
+
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def _memmap_lambda_max_LM_parallel(X, y, N, p, _dtype, _order, chunck_size=50000):
+    """
+    Calculate the lambda_max, i.e., the minimum lambda to nullify all penalized betas.
+    """
+#     X_temp = X.copy()
+#     X_temp = X_temp[:,1:]
+#     X_temp -= np.mean(X_temp,0).reshape(1,-1)
+#     X_temp /= np.std(X_temp,0)
+#     y_temp = y.copy()
+#     y_temp -= np.mean(y)
+#     y_temp /= np.std(y)
+
+    grad_at_0 = _memmap_update_smooth_grad_convex_LM_parallel(N=N, p=p, X=X, beta_md=np.zeros(p), y=y, _dtype=_dtype, _order=_order, chunck_size=chunck_size)
+    lambda_max = np.linalg.norm(grad_at_0[1:], ord=np.infty)
+    return lambda_max
+
+
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def memmap_UAG_LM_SCAD_MCP_parallel(design_matrix, outcome, N, p, L_convex, _dtype, _order, beta_0 = np.ones(1), tol=1e-2, maxit=500, _lambda=.5, penalty="SCAD", a=3.7, gamma=2., chunck_size=50000):
+    '''
+    Carry out the optimization for penalized LM for a fixed lambda.
+    '''
+    X = design_matrix
+    y = outcome
+    _itemsize = np.dtype(_dtype).itemsize
+    if np.all(beta_0==np.ones(1)):        
+        if _order == "F":
+            def __parallel_assign(_ind):
+                import numpy as np
+                k=0
+                __ = np.zeros(len(_ind))
+                for j in _ind:
+                    _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
+                    __[k] = _X@y
+                    k += 1
+                return __
+            # multiprocessing starts here
+            ind = np.arange(p)
+            n_slices = np.ceil(len(ind)/chunck_size)
+            with mp.Pool(mp.cpu_count()) as pl:
+                _XTy = pl.map(__parallel_assign, np.array_split(ind, n_slices))
+            _XTy = np.hstack(_XTy)
+        elif _order == "C":
+            def __parallel_plus(_ind):
+                import numpy as np
+                __ = np.zeros(p)
+                for j in _ind:
+                    _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
+                    __ += _X*y[j]
+                return __
+            # multiprocessing starts here
+            ind = np.arange(N)
+            n_slices = np.ceil(len(ind)/chunck_size)
+            with mp.Pool(mp.cpu_count()) as pl:
+                _XTy = pl.map(__parallel_plus, np.array_split(ind, n_slices))
+            _XTy = np.array(_XTy).sum(0)
+        beta = np.sign(_XTy)
+    else:
+        beta = beta_0
+    # passing other parameters
+    smooth_grad = np.ones(p)
+    beta_ag = beta.copy()
+    beta_md = beta.copy()
+    k = 0
+    converged = False
+    opt_alpha = 1.
+    old_speed_norm = 1.
+    speed_norm = 1.
+    restart_k = 0
+    
+    if penalty == "SCAD":
+#         L = np.max(np.array([L_convex, 1./(a-1)]))
+        L = np.linalg.norm(np.array([L_convex, 1./(a-1)]), ord=np.infty)
+        opt_beta = .99/L
+        while ((not converged) or (k<3)) and k <= maxit:
+            k += 1
+            if old_speed_norm > speed_norm and k - restart_k>=3: # in this case, restart
+                opt_alpha = 1. # restarting
+                restart_k = k # restarting
+            else: # restarting
+                opt_alpha = 2/(1+(1+4./opt_alpha**2)**.5) #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound 
+            opt_lambda = opt_beta/opt_alpha #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound
+            beta_md_old = beta_md.copy() # restarting
+            beta_md = (1-opt_alpha)*beta_ag + opt_alpha*beta
+            old_speed_norm = speed_norm # restarting
+            speed_norm = np.linalg.norm(beta_md - beta_md_old, ord=2) # restarting
+            converged = (np.linalg.norm(beta_md - beta_md_old, ord=np.infty) < tol)
+            smooth_grad = _memmap_update_smooth_grad_SCAD_LM_parallel(N=N, p=p, X=X, beta_md=beta_md, y=y, _lambda=_lambda, a=a, _dtype=_dtype, _order=_order, chunck_size=chunck_size)
+            beta = soft_thresholding(x=beta - opt_lambda*smooth_grad, lambda_=opt_lambda*_lambda)
+            beta_ag = soft_thresholding(x=beta_md - opt_beta*smooth_grad, lambda_=opt_beta*_lambda)
+#             converged = np.all(np.max(np.abs(beta_md - beta_ag)/opt_beta) < tol).item()
+#             converged = (np.linalg.norm(beta_md - beta_ag, ord=np.infty) < (tol*opt_beta))
+    else:
+#         L = np.max(np.array([L_convex, 1./(gamma)]))
+        L = np.linalg.norm(np.array([L_convex, 1./(gamma)]), ord=np.infty)
+        opt_beta = .99/L
+        while ((not converged) or (k<3)) and k <= maxit:
+            k += 1
+            if old_speed_norm > speed_norm and k - restart_k>=3: # in this case, restart
+                opt_alpha = 1. # restarting
+                restart_k = k # restarting
+            else: # restarting
+                opt_alpha = 2/(1+(1+4./opt_alpha**2)**.5) #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound 
+            opt_lambda = opt_beta/opt_alpha #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound
+            beta_md_old = beta_md.copy() # restarting
+            beta_md = (1-opt_alpha)*beta_ag + opt_alpha*beta
+            old_speed_norm = speed_norm # restarting
+            speed_norm = np.linalg.norm(beta_md - beta_md_old, ord=2) # restarting
+            converged = (np.linalg.norm(beta_md - beta_md_old, ord=np.infty) < tol)
+            smooth_grad = _memmap_update_smooth_grad_MCP_LM_parallel(N=N, p=p, X=X, beta_md=beta_md, y=y, _lambda=_lambda, gamma=gamma, _dtype=_dtype, _order=_order, chunck_size=chunck_size)
+            beta = soft_thresholding(x=beta - opt_lambda*smooth_grad, lambda_=opt_lambda*_lambda)
+            beta_ag = soft_thresholding(x=beta_md - opt_beta*smooth_grad, lambda_=opt_beta*_lambda)
+#             converged = np.all(np.max(np.abs(beta_md - beta_ag)/opt_beta) < tol).item()
+#             converged = (np.linalg.norm(beta_md - beta_ag, ord=np.infty) < (tol*opt_beta))
+    return k, beta_md
+
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def memmap_solution_path_LM_parallel(design_matrix, outcome, lambda_, L_convex, N, p, beta_0 = np.ones(1), tol=1e-2, maxit=500, penalty="SCAD", a=3.7, gamma=2., _dtype='float32', _order="F", chunck_size=50000):
+    '''
+    Carry out the optimization for the solution path without the strong rule.
+    '''
+    beta_mat = np.zeros((len(lambda_)+1, p))
+    for j in range(len(lambda_)): 
+        beta_mat[j+1,:] = memmap_UAG_LM_SCAD_MCP_parallel(design_matrix=design_matrix, outcome=outcome, N=N, p=p, L_convex=L_convex, beta_0 = beta_mat[j,:], tol=tol, maxit=maxit, _lambda=lambda_[j], penalty=penalty, a=a, gamma=gamma, _dtype=_dtype, _order=_order, chunck_size=chunck_size)[1]
+    return beta_mat[1:,:]
+
+
+############################################################################
+################## logistic normal memory ##################################
+############################################################################
+
 @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def update_smooth_grad_convex_logistic(N, X, beta_md, y):
     '''
@@ -845,173 +1224,11 @@ def solution_path_logistic_strongrule(design_matrix, outcome, lambda_, beta_0 = 
         beta_mat[j+1,:] = _new_beta
     return beta_mat[1:,:]
 
-# memmap version below
 
-# LM
-# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
-def _memmap_update_smooth_grad_convex_LM(N, p, X, beta_md, y, _dtype, _order):
-    '''
-    Update the gradient of the smooth convex objective component.
-    '''
-    _itemsize = np.dtype(_dtype).itemsize
-    # first calcualte _=X@beta_md-y
-    _ = np.zeros(N)
-    if _order == "F":
-        for j in np.arange(p):
-            _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
-            _ += _X*beta_md[j]
-    elif _order == "C":
-        for j in np.arange(N):
-            _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
-            _[j] = _X@beta_md
-    _ -= y
-    # then calculate _XTXbeta = X.T@X@beta_md = X.T@_
-    _XTXbeta = np.zeros(p)
-    if _order == "F":
-        for j in np.arange(p):
-            _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
-            _XTXbeta[j] = _X@_
-    elif _order == "C":
-        for j in np.arange(N):
-            _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
-            _XTXbeta += _X*_[j]
-    del _
-    return 1/N*_XTXbeta
+########################################################################
+################## logistic memory mapping #############################
+########################################################################
 
-# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
-def _memmap_update_smooth_grad_SCAD_LM(N, p, X, beta_md, y, _lambda, a, _dtype, _order):
-    '''
-    Update the gradient of the smooth objective component for SCAD penalty.
-    '''
-    return _memmap_update_smooth_grad_convex_LM(N=N, p=p, X=X, beta_md=beta_md, y=y, _dtype=_dtype, _order=_order) + SCAD_concave_grad(x=beta_md, lambda_=_lambda, a=a)
-
-# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
-def _memmap_update_smooth_grad_MCP_LM(N, p, X, beta_md, y, _lambda, gamma, _dtype, _order):
-    '''
-    Update the gradient of the smooth objective component for MCP penalty.
-    '''
-    return _memmap_update_smooth_grad_convex_LM(N=N, p=p, X=X, beta_md=beta_md, y=y, _dtype=_dtype, _order=_order) + MCP_concave_grad(x=beta_md, lambda_=_lambda, gamma=gamma)
-
-
-# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
-def _memmap_lambda_max_LM(X, y, N, p, _dtype, _order):
-    """
-    Calculate the lambda_max, i.e., the minimum lambda to nullify all penalized betas.
-    """
-#     X_temp = X.copy()
-#     X_temp = X_temp[:,1:]
-#     X_temp -= np.mean(X_temp,0).reshape(1,-1)
-#     X_temp /= np.std(X_temp,0)
-#     y_temp = y.copy()
-#     y_temp -= np.mean(y)
-#     y_temp /= np.std(y)
-    _itemsize = np.dtype(_dtype).itemsize
-    _ = np.zeros(p)
-    if _order == "F":
-        for j in np.arange(p):
-            _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
-            _[j] = _X@y
-    elif _order == "C":
-        for j in np.arange(N):
-            _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
-            _ += _X*y[j]
-
-    grad_at_0 = _[1:]/N
-    lambda_max = np.linalg.norm(grad_at_0, ord=np.infty)
-    return lambda_max
-
-
-
-# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
-def memmap_UAG_LM_SCAD_MCP(design_matrix, outcome, N, p, L_convex, _dtype, _order, beta_0 = np.ones(1), tol=1e-2, maxit=500, _lambda=.5, penalty="SCAD", a=3.7, gamma=2.):
-    '''
-    Carry out the optimization for penalized LM for a fixed lambda.
-    '''
-    X = design_matrix
-    y = outcome
-    _itemsize = np.dtype(_dtype).itemsize
-    if np.all(beta_0==np.ones(1)):
-        _ = np.zeros(p)
-        if _order == "F":
-            for j in np.arange(p):
-                _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
-                _[j] = _X@y
-        elif _order == "C":
-            for j in np.arange(N):
-                _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
-                _ += _X*y[j]
-        beta = np.sign(_)
-    else:
-        beta = beta_0
-    # passing other parameters
-    smooth_grad = np.ones(p)
-    beta_ag = beta.copy()
-    beta_md = beta.copy()
-    k = 0
-    converged = False
-    opt_alpha = 1.
-    old_speed_norm = 1.
-    speed_norm = 1.
-    restart_k = 0
-    
-    if penalty == "SCAD":
-#         L = np.max(np.array([L_convex, 1./(a-1)]))
-        L = np.linalg.norm(np.array([L_convex, 1./(a-1)]), ord=np.infty)
-        opt_beta = .99/L
-        while ((not converged) or (k<3)) and k <= maxit:
-            k += 1
-            if old_speed_norm > speed_norm and k - restart_k>=3: # in this case, restart
-                opt_alpha = 1. # restarting
-                restart_k = k # restarting
-            else: # restarting
-                opt_alpha = 2/(1+(1+4./opt_alpha**2)**.5) #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound 
-            opt_lambda = opt_beta/opt_alpha #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound
-            beta_md_old = beta_md.copy() # restarting
-            beta_md = (1-opt_alpha)*beta_ag + opt_alpha*beta
-            old_speed_norm = speed_norm # restarting
-            speed_norm = np.linalg.norm(beta_md - beta_md_old, ord=2) # restarting
-            converged = (np.linalg.norm(beta_md - beta_md_old, ord=np.infty) < tol)
-            smooth_grad = _memmap_update_smooth_grad_SCAD_LM(N=N, p=p, X=X, beta_md=beta_md, y=y, _lambda=_lambda, a=a, _dtype=_dtype, _order=_order)
-            beta = soft_thresholding(x=beta - opt_lambda*smooth_grad, lambda_=opt_lambda*_lambda)
-            beta_ag = soft_thresholding(x=beta_md - opt_beta*smooth_grad, lambda_=opt_beta*_lambda)
-#             converged = np.all(np.max(np.abs(beta_md - beta_ag)/opt_beta) < tol).item()
-#             converged = (np.linalg.norm(beta_md - beta_ag, ord=np.infty) < (tol*opt_beta))
-    else:
-#         L = np.max(np.array([L_convex, 1./(gamma)]))
-        L = np.linalg.norm(np.array([L_convex, 1./(gamma)]), ord=np.infty)
-        opt_beta = .99/L
-        while ((not converged) or (k<3)) and k <= maxit:
-            k += 1
-            if old_speed_norm > speed_norm and k - restart_k>=3: # in this case, restart
-                opt_alpha = 1. # restarting
-                restart_k = k # restarting
-            else: # restarting
-                opt_alpha = 2/(1+(1+4./opt_alpha**2)**.5) #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound 
-            opt_lambda = opt_beta/opt_alpha #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound
-            beta_md_old = beta_md.copy() # restarting
-            beta_md = (1-opt_alpha)*beta_ag + opt_alpha*beta
-            old_speed_norm = speed_norm # restarting
-            speed_norm = np.linalg.norm(beta_md - beta_md_old, ord=2) # restarting
-            converged = (np.linalg.norm(beta_md - beta_md_old, ord=np.infty) < tol)
-            smooth_grad = _memmap_update_smooth_grad_MCP_LM(N=N, p=p, X=X, beta_md=beta_md, y=y, _lambda=_lambda, gamma=gamma, _dtype=_dtype, _order=_order)
-            beta = soft_thresholding(x=beta - opt_lambda*smooth_grad, lambda_=opt_lambda*_lambda)
-            beta_ag = soft_thresholding(x=beta_md - opt_beta*smooth_grad, lambda_=opt_beta*_lambda)
-#             converged = np.all(np.max(np.abs(beta_md - beta_ag)/opt_beta) < tol).item()
-#             converged = (np.linalg.norm(beta_md - beta_ag, ord=np.infty) < (tol*opt_beta))
-    return k, beta_md
-
-
-# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
-def memmap_solution_path_LM(design_matrix, outcome, lambda_, L_convex, N, p, beta_0 = np.ones(1), tol=1e-2, maxit=500, penalty="SCAD", a=3.7, gamma=2., _dtype='float32', _order="F"):
-    '''
-    Carry out the optimization for the solution path without the strong rule.
-    '''
-    beta_mat = np.zeros((len(lambda_)+1, p))
-    for j in range(len(lambda_)): 
-        beta_mat[j+1,:] = memmap_UAG_LM_SCAD_MCP(design_matrix=design_matrix, outcome=outcome, N=N, p=p, L_convex=L_convex, beta_0 = beta_mat[j,:], tol=tol, maxit=maxit, _lambda=lambda_[j], penalty=penalty, a=a, gamma=gamma, _dtype=_dtype, _order=_order,)[1]
-    return beta_mat[1:,:]
-
-# logistic 
 # @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def _memmap_update_smooth_grad_convex_logistic(N, p, X, beta_md, y, _dtype, _order):
     '''
@@ -1071,19 +1288,9 @@ def _memmap_lambda_max_logistic(X, y, N, p, _dtype, _order):
 #     y_temp = y.copy()
 #     y_temp -= np.mean(y)
 #     y_temp /= np.std(y)
-    _itemsize = np.dtype(_dtype).itemsize
-    _ = np.zeros(p)
-    if _order == "F":
-        for j in np.arange(p):
-            _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
-            _[j] = _X@y
-    elif _order == "C":
-        for j in np.arange(N):
-            _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
-            _ += _X*y[j]
 
-    grad_at_0 = _[1:]/N
-    lambda_max = np.linalg.norm(grad_at_0, ord=np.infty)
+    grad_at_0 = _memmap_update_smooth_grad_convex_logistic(N=N, p=p, X=X, beta_md=np.zeros(p), y=y, _dtype=_dtype, _order=_order)
+    lambda_max = np.linalg.norm(grad_at_0[1:], ord=np.infty)
     return lambda_max
 
 
@@ -1176,5 +1383,229 @@ def memmap_solution_path_logistic(design_matrix, outcome, lambda_, L_convex, N, 
     for j in range(len(lambda_)): 
         beta_mat[j+1,:] = memmap_UAG_logistic_SCAD_MCP(design_matrix=design_matrix, outcome=outcome, N=N, p=p, L_convex=L_convex, beta_0 = beta_mat[j,:], tol=tol, maxit=maxit, _lambda=lambda_[j], penalty=penalty, a=a, gamma=gamma, _dtype=_dtype, _order=_order,)[1]
     return beta_mat[1:,:]
+
+
+#######################################################################################
+############### logistic memory mapping with multiprocessing ##########################
+#######################################################################################
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def _memmap_update_smooth_grad_convex_logistic_parallel(N, p, X, beta_md, y, _dtype, _order, chunck_size):
+    '''
+    Update the gradient of the smooth convex objective component.
+    '''
+    _itemsize = np.dtype(_dtype).itemsize
+    # first calcualte _=X@beta_md-y
+    if _order == "F":
+        def __parallel_plus(_ind):
+            import numpy as np
+            __ = np.zeros(N)
+            for j in _ind:
+                _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
+                __ += _X*beta_md[j]
+            return __
+        # multiprocessing starts here
+        ind = np.arange(p)
+        n_slices = np.ceil(len(ind)/chunck_size)
+        with mp.Pool(mp.cpu_count()) as pl:
+            _ = pl.map(__parallel_plus, np.array_split(ind, n_slices))
+        _ = np.array(_).sum(0)
+    elif _order == "C":
+        def __parallel_assign(_ind):
+            import numpy as np
+            k=0
+            __ = np.zeros(len(_ind))
+            for j in _ind:
+                _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
+                __[k] = _X@beta_md
+                k += 1
+            return __
+        # multiprocessing starts here
+        ind = np.arange(N)
+        n_slices = np.ceil(len(ind)/chunck_size)
+        with mp.Pool(mp.cpu_count()) as pl:
+            _ = pl.map(__parallel_assign, np.array_split(ind, n_slices))
+        _ = np.hstack(_)
+    _ = np.tanh(_/2.)/2.-y+.5
+    # then calculate _XTXbeta = X.T@X@beta_md = X.T@_
+    if _order == "F":
+        def __parallel_assign(_ind):
+            import numpy as np
+            k=0
+            __ = np.zeros(len(_ind))
+            for j in _ind:
+                _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
+                __[k] = _X@_
+                k += 1
+            return __
+        # multiprocessing starts here
+        ind = np.arange(p)
+        n_slices = np.ceil(len(ind)/chunck_size)
+        with mp.Pool(mp.cpu_count()) as pl:
+            _XTXbeta = pl.map(__parallel_assign, np.array_split(ind, n_slices))
+        _XTXbeta = np.hstack(_XTXbeta)
+    elif _order == "C":
+        def __parallel_plus(_ind):
+            import numpy as np
+            __ = np.zeros(p)
+            for j in _ind:
+                _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
+                __ += _X*_[j]
+            return __
+        # multiprocessing starts here
+        ind = np.arange(N)
+        n_slices = np.ceil(len(ind)/chunck_size)
+        with mp.Pool(mp.cpu_count()) as pl:
+            _XTXbeta = pl.map(__parallel_plus, np.array_split(ind, n_slices))
+        _XTXbeta = np.array(_XTXbeta).sum(0)
+    del _
+    return _XTXbeta/(2.*N)
+    
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def _memmap_update_smooth_grad_SCAD_logistic_parallel(N, p, X, beta_md, y, _lambda, a, _dtype, _order, chunck_size):
+    '''
+    Update the gradient of the smooth objective component for SCAD penalty.
+    '''
+    return _memmap_update_smooth_grad_convex_logistic_parallel(N=N, p=p, X=X, beta_md=beta_md, y=y, _dtype=_dtype, _order=_order, chunck_size=chunck_size) + SCAD_concave_grad(x=beta_md, lambda_=_lambda, a=a)
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def _memmap_update_smooth_grad_MCP_logistic_parallel(N, p, X, beta_md, y, _lambda, gamma, _dtype, _order, chunck_size):
+    '''
+    Update the gradient of the smooth objective component for MCP penalty.
+    '''
+    return _memmap_update_smooth_grad_convex_logistic_parallel(N=N, p=p, X=X, beta_md=beta_md, y=y, _dtype=_dtype, _order=_order, chunck_size=chunck_size) + MCP_concave_grad(x=beta_md, lambda_=_lambda, gamma=gamma)
+
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def _memmap_lambda_max_logistic_parallel(X, y, N, p, _dtype, _order, chunck_size=50000):
+    """
+    Calculate the lambda_max, i.e., the minimum lambda to nullify all penalized betas.
+    """
+#     X_temp = X.copy()
+#     X_temp = X_temp[:,1:]
+#     X_temp -= np.mean(X_temp,0).reshape(1,-1)
+#     X_temp /= np.std(X_temp,0)
+#     y_temp = y.copy()
+#     y_temp -= np.mean(y)
+#     y_temp /= np.std(y)
+
+    grad_at_0 = _memmap_update_smooth_grad_convex_logistic_parallel(N=N, p=p, X=X, beta_md=np.zeros(p), y=y, _dtype=_dtype, _order=_order, chunck_size=chunck_size)
+    lambda_max = np.linalg.norm(grad_at_0[1:], ord=np.infty)
+    return lambda_max
+
+
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def memmap_UAG_logistic_SCAD_MCP_parallel(design_matrix, outcome, N, p, L_convex, _dtype, _order, beta_0 = np.ones(1), tol=1e-2, maxit=500, _lambda=.5, penalty="SCAD", a=3.7, gamma=2., chunck_size=50000):
+    '''
+    Carry out the optimization for penalized logistic for a fixed lambda.
+    '''
+    X = design_matrix
+    y = outcome
+    _itemsize = np.dtype(_dtype).itemsize
+    if np.all(beta_0==np.ones(1)):        
+        if _order == "F":
+            def __parallel_assign(_ind):
+                import numpy as np
+                k=0
+                __ = np.zeros(len(_ind))
+                for j in _ind:
+                    _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
+                    __[k] = _X@y
+                    k += 1
+                return __
+            # multiprocessing starts here
+            ind = np.arange(p)
+            n_slices = np.ceil(len(ind)/chunck_size)
+            with mp.Pool(mp.cpu_count()) as pl:
+                _XTy = pl.map(__parallel_assign, np.array_split(ind, n_slices))
+            _XTy = np.hstack(_XTy)
+        elif _order == "C":
+            def __parallel_plus(_ind):
+                import numpy as np
+                __ = np.zeros(p)
+                for j in _ind:
+                    _X = np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
+                    __ += _X*y[j]
+                return __
+            # multiprocessing starts here
+            ind = np.arange(N)
+            n_slices = np.ceil(len(ind)/chunck_size)
+            with mp.Pool(mp.cpu_count()) as pl:
+                _XTy = pl.map(__parallel_plus, np.array_split(ind, n_slices))
+            _XTy = np.array(_XTy).sum(0)
+        beta = np.sign(_XTy)
+    else:
+        beta = beta_0
+    # passing other parameters
+    smooth_grad = np.ones(p)
+    beta_ag = beta.copy()
+    beta_md = beta.copy()
+    k = 0
+    converged = False
+    opt_alpha = 1.
+    old_speed_norm = 1.
+    speed_norm = 1.
+    restart_k = 0
+    
+    if penalty == "SCAD":
+#         L = np.max(np.array([L_convex, 1./(a-1)]))
+        L = np.linalg.norm(np.array([L_convex, 1./(a-1)]), ord=np.infty)
+        opt_beta = .99/L
+        while ((not converged) or (k<3)) and k <= maxit:
+            k += 1
+            if old_speed_norm > speed_norm and k - restart_k>=3: # in this case, restart
+                opt_alpha = 1. # restarting
+                restart_k = k # restarting
+            else: # restarting
+                opt_alpha = 2/(1+(1+4./opt_alpha**2)**.5) #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound 
+            opt_lambda = opt_beta/opt_alpha #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound
+            beta_md_old = beta_md.copy() # restarting
+            beta_md = (1-opt_alpha)*beta_ag + opt_alpha*beta
+            old_speed_norm = speed_norm # restarting
+            speed_norm = np.linalg.norm(beta_md - beta_md_old, ord=2) # restarting
+            converged = (np.linalg.norm(beta_md - beta_md_old, ord=np.infty) < tol)
+            smooth_grad = _memmap_update_smooth_grad_SCAD_logistic_parallel(N=N, p=p, X=X, beta_md=beta_md, y=y, _lambda=_lambda, a=a, _dtype=_dtype, _order=_order, chunck_size=chunck_size)
+            beta = soft_thresholding(x=beta - opt_lambda*smooth_grad, lambda_=opt_lambda*_lambda)
+            beta_ag = soft_thresholding(x=beta_md - opt_beta*smooth_grad, lambda_=opt_beta*_lambda)
+#             converged = np.all(np.max(np.abs(beta_md - beta_ag)/opt_beta) < tol).item()
+#             converged = (np.linalg.norm(beta_md - beta_ag, ord=np.infty) < (tol*opt_beta))
+    else:
+#         L = np.max(np.array([L_convex, 1./(gamma)]))
+        L = np.linalg.norm(np.array([L_convex, 1./(gamma)]), ord=np.infty)
+        opt_beta = .99/L
+        while ((not converged) or (k<3)) and k <= maxit:
+            k += 1
+            if old_speed_norm > speed_norm and k - restart_k>=3: # in this case, restart
+                opt_alpha = 1. # restarting
+                restart_k = k # restarting
+            else: # restarting
+                opt_alpha = 2/(1+(1+4./opt_alpha**2)**.5) #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound 
+            opt_lambda = opt_beta/opt_alpha #parameter settings based on minimizing Ghadimi and Lan's rate of convergence error upper bound
+            beta_md_old = beta_md.copy() # restarting
+            beta_md = (1-opt_alpha)*beta_ag + opt_alpha*beta
+            old_speed_norm = speed_norm # restarting
+            speed_norm = np.linalg.norm(beta_md - beta_md_old, ord=2) # restarting
+            converged = (np.linalg.norm(beta_md - beta_md_old, ord=np.infty) < tol)
+            smooth_grad = _memmap_update_smooth_grad_MCP_logistic_parallel(N=N, p=p, X=X, beta_md=beta_md, y=y, _lambda=_lambda, gamma=gamma, _dtype=_dtype, _order=_order)
+            beta = soft_thresholding(x=beta - opt_lambda*smooth_grad, lambda_=opt_lambda*_lambda)
+            beta_ag = soft_thresholding(x=beta_md - opt_beta*smooth_grad, lambda_=opt_beta*_lambda)
+#             converged = np.all(np.max(np.abs(beta_md - beta_ag)/opt_beta) < tol).item()
+#             converged = (np.linalg.norm(beta_md - beta_ag, ord=np.infty) < (tol*opt_beta))
+    return k, beta_md
+
+
+# @jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
+def memmap_solution_path_logistic_parallel(design_matrix, outcome, lambda_, L_convex, N, p, beta_0 = np.ones(1), tol=1e-2, maxit=500, penalty="SCAD", a=3.7, gamma=2., _dtype='float32', _order="F"):
+    '''
+    Carry out the optimization for the solution path without the strong rule.
+    '''
+    beta_mat = np.zeros((len(lambda_)+1, p))
+    for j in range(len(lambda_)): 
+        beta_mat[j+1,:] = memmap_UAG_logistic_SCAD_MCP_parallel(design_matrix=design_matrix, outcome=outcome, N=N, p=p, L_convex=L_convex, beta_0 = beta_mat[j,:], tol=tol, maxit=maxit, _lambda=lambda_[j], penalty=penalty, a=a, gamma=gamma, _dtype=_dtype, _order=_order,)[1]
+    return beta_mat[1:,:]
+
+
 
 
