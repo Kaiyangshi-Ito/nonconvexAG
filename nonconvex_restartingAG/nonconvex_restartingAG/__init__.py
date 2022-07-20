@@ -675,7 +675,7 @@ def _memmap_update_smooth_grad_convex_LM_parallel(N, p, X, beta_md, y, _dtype, _
     # first calcualte _=X@beta_md-y
     if _order == "F":
         def __parallel_plus(_ind):
-            import numpy as np
+            import numpy as _np
             __ = _np.zeros(N)
             for j in _ind:
                 _X = _np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
@@ -689,7 +689,7 @@ def _memmap_update_smooth_grad_convex_LM_parallel(N, p, X, beta_md, y, _dtype, _
         _ = _np.array(_).sum(0)
     elif _order == "C":
         def __parallel_assign(_ind):
-            import numpy as np
+            import numpy as _np
             k=0
             __ = _np.zeros(len(_ind))
             for j in _ind:
@@ -707,7 +707,7 @@ def _memmap_update_smooth_grad_convex_LM_parallel(N, p, X, beta_md, y, _dtype, _
     # then calculate _XTXbeta = X.T@X@beta_md = X.T@_
     if _order == "F":
         def __parallel_assign(_ind):
-            import numpy as np
+            import numpy as _np
             k=0
             __ = _np.zeros(len(_ind))
             for j in _ind:
@@ -723,7 +723,7 @@ def _memmap_update_smooth_grad_convex_LM_parallel(N, p, X, beta_md, y, _dtype, _
         _XTXbeta = _np.hstack(_XTXbeta)
     elif _order == "C":
         def __parallel_plus(_ind):
-            import numpy as np
+            import numpy as _np
             __ = _np.zeros(p)
             for j in _ind:
                 _X = _np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
@@ -783,7 +783,7 @@ def memmap_UAG_LM_SCAD_MCP_parallel(design_matrix, outcome, N, p, L_convex, _dty
     if _np.all(beta_0==_np.ones(1)):
         if _order == "F":
             def __parallel_assign(_ind):
-                import numpy as np
+                import numpy as _np
                 k=0
                 __ = _np.zeros(len(_ind))
                 for j in _ind:
@@ -799,7 +799,7 @@ def memmap_UAG_LM_SCAD_MCP_parallel(design_matrix, outcome, N, p, L_convex, _dty
             _XTy = _np.hstack(_XTy)
         elif _order == "C":
             def __parallel_plus(_ind):
-                import numpy as np
+                import numpy as _np
                 __ = _np.zeros(p)
                 for j in _ind:
                     _X = _np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
@@ -1416,7 +1416,7 @@ def _memmap_update_smooth_grad_convex_logistic_parallel(N, p, X, beta_md, y, _dt
     # first calcualte _=X@beta_md-y
     if _order == "F":
         def __parallel_plus(_ind):
-            import numpy as np
+            import numpy as _np
             __ = _np.zeros(N)
             for j in _ind:
                 _X = _np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*N, shape = (N,))
@@ -1430,7 +1430,7 @@ def _memmap_update_smooth_grad_convex_logistic_parallel(N, p, X, beta_md, y, _dt
         _ = _np.array(_).sum(0)
     elif _order == "C":
         def __parallel_assign(_ind):
-            import numpy as np
+            import numpy as _np
             k=0
             __ = _np.zeros(len(_ind))
             for j in _ind:
@@ -1448,7 +1448,7 @@ def _memmap_update_smooth_grad_convex_logistic_parallel(N, p, X, beta_md, y, _dt
     # then calculate _XTXbeta = X.T@X@beta_md = X.T@_
     if _order == "F":
         def __parallel_assign(_ind):
-            import numpy as np
+            import numpy as _np
             k=0
             __ = _np.zeros(len(_ind))
             for j in _ind:
@@ -1464,7 +1464,7 @@ def _memmap_update_smooth_grad_convex_logistic_parallel(N, p, X, beta_md, y, _dt
         _XTXbeta = _np.hstack(_XTXbeta)
     elif _order == "C":
         def __parallel_plus(_ind):
-            import numpy as np
+            import numpy as _np
             __ = _np.zeros(p)
             for j in _ind:
                 _X = _np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
@@ -1525,7 +1525,7 @@ def memmap_UAG_logistic_SCAD_MCP_parallel(design_matrix, outcome, N, p, L_convex
     if _np.all(beta_0==_np.ones(1)):
         if _order == "F":
             def __parallel_assign(_ind):
-                import numpy as np
+                import numpy as _np
                 k=0
                 __ = _np.zeros(len(_ind))
                 for j in _ind:
@@ -1541,7 +1541,7 @@ def memmap_UAG_logistic_SCAD_MCP_parallel(design_matrix, outcome, N, p, L_convex
             _XTy = _np.hstack(_XTy)
         elif _order == "C":
             def __parallel_plus(_ind):
-                import numpy as np
+                import numpy as _np
                 __ = _np.zeros(p)
                 for j in _ind:
                     _X = _np.memmap(X, dtype=_dtype, mode='r', offset=j*_itemsize*p, shape = (p,))
