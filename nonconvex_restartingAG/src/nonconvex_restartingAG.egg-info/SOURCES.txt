@@ -1,0 +1,8 @@
+LICENSE
+README.md
+pyproject.toml
+src/nonconvex_restartingAG/__init__.py
+src/nonconvex_restartingAG.egg-info/PKG-INFO
+src/nonconvex_restartingAG.egg-info/SOURCES.txt
+src/nonconvex_restartingAG.egg-info/dependency_links.txt
+src/nonconvex_restartingAG.egg-info/top_level.txt
