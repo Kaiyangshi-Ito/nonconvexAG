@@ -1,7 +1,7 @@
 Metadata-Version: 2.1
-Name: nonconvex-restartingAG
+Name: nonconvexAG
 Version: 0.9.3
-Summary: Implementation of restarting accelerated gradient algorithm with strong rules for (high-dimensional) nonconvex sparse learning problems. Memory-mapping and multiprocessing are now available.
+Summary: Implementation of accelerated gradient algorithm with strong rules for (high-dimensional) nonconvex sparse learning problems. Restarting, memory-mapping, and multiprocessing are now available.
 Author-email: Kai Yang <kai.yang2@mail.mcgill.ca>
 License:                     GNU AFFERO GENERAL PUBLIC LICENSE
                                Version 3, 19 November 2007
@@ -665,8 +665,8 @@ License:                     GNU AFFERO GENERAL PUBLIC LICENSE
         For more information on this, and how to apply and follow the GNU AGPL, see
         <https://www.gnu.org/licenses/>.
         
-Project-URL: Homepage, https://github.com/Kaiyangshi-Ito/nonconvex_restartingAG
-Project-URL: Bug Tracker, https://github.com/Kaiyangshi-Ito/nonconvex_restartingAG/issues
+Project-URL: Homepage, https://github.com/Kaiyangshi-Ito/nonconvexAG
+Project-URL: Bug Tracker, https://github.com/Kaiyangshi-Ito/nonconvexAG/issues
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)
 Classifier: Operating System :: OS Independent
