@@ -3,6 +3,7 @@ library("MASS")
 library("ncvreg")
 library("RcppCNPy")
 
+options(nwarnings = 4*3*100*2)
 
 setwd("/home/kyang/SCAD_MCP/logistic/")
 
@@ -66,6 +67,7 @@ for (i in c(1:4)){
   }
 }
 
+warnings()
 
 npySave("R_results_SCAD_signal_recovery.npy", results_SCAD_signal_recovery)
 
@@ -101,5 +103,6 @@ for (i in c(1:4)){
   }
 }
 
+warnings()
 
 npySave("R_results_MCP_signal_recovery.npy", results_MCP_signal_recovery)
