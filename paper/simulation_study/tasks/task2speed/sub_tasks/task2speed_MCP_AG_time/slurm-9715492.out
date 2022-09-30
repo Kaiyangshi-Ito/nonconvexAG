@@ -1,0 +1,41 @@
+/var/spool/slurmd/job9715492/slurm_script: line 9: ./program: No such file or directory
+
+Lmod is automatically replacing "intel/2020.1.217" with "gcc/9.3.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) blis/0.8.1     2) flexiblas/3.0.4     3) openmpi/4.0.3
+
+Looking in links: /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/avx2, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/generic, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic
+Requirement already satisfied: pip in /home/kyang/jupyter_py3/lib/python3.8/site-packages (22.1.2+computecanada)
+Looking in links: /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/avx2, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/generic, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic
+Requirement already satisfied: rpy2 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (3.1.0+computecanada)
+Requirement already satisfied: matplotlib in /home/kyang/jupyter_py3/lib/python3.8/site-packages (3.5.1+computecanada)
+Requirement already satisfied: cupy in /home/kyang/jupyter_py3/lib/python3.8/site-packages (11.0.0+computecanada)
+Requirement already satisfied: numpy in /home/kyang/jupyter_py3/lib/python3.8/site-packages (1.22.2+computecanada)
+Requirement already satisfied: scipy in /home/kyang/jupyter_py3/lib/python3.8/site-packages (1.8.0+computecanada)
+Requirement already satisfied: jinja2 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (3.1.1+computecanada)
+Requirement already satisfied: simplegeneric in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (0.8.1+computecanada)
+Requirement already satisfied: pytest in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (7.1.1+computecanada)
+Requirement already satisfied: pytz in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (2022.1+computecanada)
+Requirement already satisfied: cffi>=1.0.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (1.15.0+computecanada)
+Requirement already satisfied: tzlocal in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (2.1+computecanada)
+Requirement already satisfied: packaging>=20.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (21.3+computecanada)
+Requirement already satisfied: kiwisolver>=1.0.1 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (1.3.2+computecanada)
+Requirement already satisfied: cycler>=0.10 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (0.11.0+computecanada)
+Requirement already satisfied: python-dateutil>=2.7 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (2.8.2+computecanada)
+Requirement already satisfied: pyparsing>=2.2.1 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (3.0.7+computecanada)
+Requirement already satisfied: fonttools>=4.22.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (4.31.2+computecanada)
+Requirement already satisfied: pillow>=6.2.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (9.0.1+computecanada)
+Requirement already satisfied: fastrlock>=0.5 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from cupy) (0.8+computecanada)
+Requirement already satisfied: pycparser in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from cffi>=1.0.0->rpy2) (2.21+computecanada)
+Requirement already satisfied: six>=1.5 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from python-dateutil>=2.7->matplotlib) (1.16.0+computecanada)
+Requirement already satisfied: MarkupSafe>=2.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from jinja2->rpy2) (2.0.1+computecanada)
+Requirement already satisfied: iniconfig in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (1.1.1+computecanada)
+Requirement already satisfied: tomli>=1.0.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (2.0.1+computecanada)
+Requirement already satisfied: py>=1.8.2 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (1.11.0+computecanada)
+Requirement already satisfied: attrs>=19.2.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (21.4.0+computecanada)
+Requirement already satisfied: pluggy<2.0,>=0.12 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (1.0.0+computecanada)
+This script gets the running time for accelerated gradient running on MCP-penalized logistic models.
+The installed CuPy version is: 11.0.0
+The CUDA device has compute capability of: 80
