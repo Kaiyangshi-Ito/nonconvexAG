@@ -3,7 +3,7 @@
 #SBATCH --gres=gpu:1              # Number of GPU(s) per node
 #SBATCH --cpus-per-task=6         # CPU cores/threads
 #SBATCH --mem=185000M               # memory per node
-#SBATCH --time=6-12:00            # time (DD-HH:MM)
+#SBATCH --time=7-00:00            # time (DD-HH:MM)
 #SBATCH --job-name=task2speed_SCAD_coord_time
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 ./program
