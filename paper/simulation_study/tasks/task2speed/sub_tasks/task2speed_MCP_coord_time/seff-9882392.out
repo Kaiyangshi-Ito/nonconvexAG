@@ -1,0 +1,11 @@
+Job ID: 9882392
+Cluster: narval
+User/Group: kyang/kyang
+State: TIMEOUT (exit code 0)
+Nodes: 1
+Cores per node: 6
+CPU Utilized: 6-23:15:25
+CPU Efficiency: 16.59% of 42-00:02:42 core-walltime
+Job Wall-clock time: 7-00:00:27
+Memory Utilized: 1.06 GB
+Memory Efficiency: 0.59% of 180.66 GB
