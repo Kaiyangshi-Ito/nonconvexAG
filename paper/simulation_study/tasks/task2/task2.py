@@ -43,6 +43,8 @@ os.chdir(sys.path[0])  # ensure working direcotry is set same as the file
 
 
 print("The installed CuPy version is:", cp.__version__)
+print("The CUDA device has compute capability of:", cp.cuda.device.get_compute_capability())
+print("Now running: signal recovery performance simulations for SCAD and MCP-penalized logistic models using AG; with strong rules enabled.")
 
 
 # In[ ]:
@@ -247,7 +249,7 @@ plt.legend(loc='center left',
            ncol=1,
            fancybox=True,
            shadow=True)
-plt.savefig('SCAD_MCP.eps', format='eps', bbox_inches='tight')
+# plt.savefig('SCAD_MCP.eps', format='eps', bbox_inches='tight')
 plt.show()
 
 
@@ -296,7 +298,7 @@ plt.legend(loc='center left',
            ncol=1,
            fancybox=True,
            shadow=True)
-plt.savefig('SCAD_MCP_concave.eps', format='eps', bbox_inches='tight')
+# plt.savefig('SCAD_MCP_concave.eps', format='eps', bbox_inches='tight')
 plt.show()
 
 

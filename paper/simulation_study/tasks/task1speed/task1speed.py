@@ -3,7 +3,7 @@
 
 # # Set up the class fundementals 
 
-# In[ ]:
+# In[1]:
 
 
 import os, sys
@@ -38,10 +38,12 @@ plt.rcParams.update({
 os.chdir(sys.path[0])  # ensure working direcotry is set same as the file
 
 
-# In[ ]:
+# In[2]:
 
 
 print("The installed CuPy version is:", cp.__version__)
+print("The CUDA device has compute capability of:", cp.cuda.device.get_compute_capability())
+print("Now running: number of iterations (gradient evaluations) and computing time simulations for SCAD and MCP-penalized linear models using AG/proximal gradient/coordinate descent.")
 
 
 # In[ ]:
@@ -239,7 +241,7 @@ plt.legend(loc='center left',
            ncol=1,
            fancybox=True,
            shadow=True)
-plt.savefig('SCAD_MCP.eps', format='eps', bbox_inches='tight')
+# plt.savefig('SCAD_MCP.eps', format='eps', bbox_inches='tight')
 plt.show()
 
 
@@ -288,7 +290,7 @@ plt.legend(loc='center left',
            ncol=1,
            fancybox=True,
            shadow=True)
-plt.savefig('SCAD_MCP_concave.eps', format='eps', bbox_inches='tight')
+# plt.savefig('SCAD_MCP_concave.eps', format='eps', bbox_inches='tight')
 plt.show()
 
 
@@ -1233,32 +1235,6 @@ for i, j, seed in itertools.product(range(3), range(4), range(100)):
 cp.save("SCAD_sim_results", SCAD_sim_results)
 
 
-# In[ ]:
-
-
-#  SCAD_sim_results_mean = cp.median(SCAD_sim_results, 2)
-# print("Median:")
-# print("AG: ",SCAD_sim_results_mean[...,0])
-# print("ISTA: ",SCAD_sim_results_mean[...,1])
-# print("original settings: ",SCAD_sim_results_mean[...,2])
-# SCAD_sim_results_se = mad(SCAD_sim_results.get(), 2)*1.4826
-# print("Consistent MAD: ")
-# print("AG: ",SCAD_sim_results_se[...,0])
-# print("ISTA: ",SCAD_sim_results_se[...,1])
-# print("original settings: ",SCAD_sim_results_se[...,2])
-
-# SCAD_sim_results_mean = cp.mean(SCAD_sim_results, 2)
-# print("Mean:")
-# print("AG: ",SCAD_sim_results_mean[...,0])
-# print("ISTA: ",SCAD_sim_results_mean[...,1])
-# print("original settings: ",SCAD_sim_results_mean[...,2])
-# SCAD_sim_results_se = cp.std(SCAD_sim_results.get(), 2)
-# print("se: ")
-# print("AG: ",SCAD_sim_results_se[...,0])
-# print("ISTA: ",SCAD_sim_results_se[...,1])
-# print("original settings: ",SCAD_sim_results_se[...,2])
-
-
 # ### MCP `MCP_sim_results.npy`
 
 # In[ ]:
@@ -1278,30 +1254,4 @@ for i, j, seed in itertools.product(range(3), range(4), range(100)):
                                                target=cp.exp(3))
 
 cp.save("MCP_sim_results", MCP_sim_results)
-
-
-# In[ ]:
-
-
-# MCP_sim_results_mean = cp.median(MCP_sim_results, 2)
-# print("Median:")
-# print("AG: ",MCP_sim_results_mean[...,0])
-# print("ISTA: ",MCP_sim_results_mean[...,1])
-# print("original settings: ",MCP_sim_results_mean[...,2])
-# MCP_sim_results_se = mad(MCP_sim_results.get(), 2)*1.4826
-# print("Consistent MAD: ")
-# print("AG: ",MCP_sim_results_se[...,0])
-# print("ISTA: ",MCP_sim_results_se[...,1])
-# print("original settings: ",MCP_sim_results_se[...,2])
-
-# MCP_sim_results_mean = cp.mean(MCP_sim_results, 2)
-# print("Mean:")
-# print("AG: ",MCP_sim_results_mean[...,0])
-# print("ISTA: ",MCP_sim_results_mean[...,1])
-# print("original settings: ",MCP_sim_results_mean[...,2])
-# MCP_sim_results_se = cp.std(MCP_sim_results.get(), 2)
-# print("se: ")
-# print("AG: ",MCP_sim_results_se[...,0])
-# print("ISTA: ",MCP_sim_results_se[...,1])
-# print("original settings: ",MCP_sim_results_se[...,2])
 
