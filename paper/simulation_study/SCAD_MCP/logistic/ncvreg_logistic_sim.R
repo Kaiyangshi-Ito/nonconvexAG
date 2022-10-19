@@ -1,4 +1,4 @@
-install.packages(c("MASS","ncvreg","RcppCNPy"), repos='http://cran.us.r-project.org')
+# install.packages(c("MASS","ncvreg","RcppCNPy"), repos='http://cran.us.r-project.org')
 library("MASS")
 library("ncvreg")
 library("RcppCNPy")
