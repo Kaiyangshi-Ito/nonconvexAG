@@ -18,4 +18,4 @@ pip install rpy2 matplotlib cupy numpy scipy
 nvidia-smi
 lscpu
 
-python3 /home/kyang/tasks/task2speed_MCP/dist/task2speed_MCP.py
+python3 /home/kyang/tasks/task2speed/sub_tasks/task2speed_MCP/dist/task2speed_MCP.py
