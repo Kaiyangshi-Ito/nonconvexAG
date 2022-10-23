@@ -18,4 +18,4 @@ pip install rpy2 matplotlib cupy numpy scipy
 nvidia-smi
 lscpu
 
-python3 /home/kyang/tasks/task2speed_MCP_coord_time/dist/task2speed_MCP_coord_time.py
+python3 /home/kyang/tasks/task2speed/sub_tasks/task2speed_MCP_coord_time/dist/task2speed_MCP_coord_time.py
