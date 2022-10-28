@@ -1,0 +1,10 @@
+k1 = 8:1:1e8;
+log_2overk = log(2) - log(k1);
+b1 = (2+5.*log_2overk+sqrt(9.*(log_2overk.^2)+4))/(2.*log_2overk);
+a1=2.^b1/((1-b1).*(4-b1));
+obj=a1.*k1.^(1-b1);
+plt=plot(log(k1),log(obj));
+xlabel('$\log(k)$','Fontsize',12, 'Interpreter','latex');
+ylabel('$\log\left(\frac{2^{\bar{b}}}{\left(1-\bar{b}\right)\left(4-\bar{b}\right)}k^{1-\bar{b}}\right)$','Fontsize',12, 'Interpreter','latex');
+plt=gca;
+exportgraphics(plt,'tighter_lower_bound_plot.eps','Colorspace','rgb','Resolution',600);
