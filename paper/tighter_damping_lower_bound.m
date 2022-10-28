@@ -1,9 +1,9 @@
-k1 = 2:1:2000;
+k1 = 20000:1:30000;
 b1 = 0:1e-3:1;
 b1 = b1(2:length(b1)-1); % since b can't take 0 or 1
 [k, b] = meshgrid(k1, b1);
-Z = ((2./k).^b)./((1-b).*(4-b));
-plt = surfc(k,b,log(Z),log(Z));
+Z = k.*((2./k).^b)./((1-b).*(4-b));
+plt = surfc(k,b,Z,log(Z));
 xlabel('$k$','Fontsize',12, 'Interpreter','latex');
 ylabel('$b$','Fontsize',12, 'Interpreter','latex');
 zlabel('$\log(\bar{a}k^{-b})$','Fontsize',12, 'Interpreter','latex');
