@@ -1,5 +1,5 @@
 clear;
-k1 = 8:1:1e9;
+k1 = 8:1:5000;
 log_2overk = log(2) - log(k1);
 b1 = (2+5.*log_2overk+sqrt(9.*(log_2overk.^2)+4))/(2.*log_2overk);
 log_a1=b1.*log(2)-log(1-b1)-log(4-b1);
