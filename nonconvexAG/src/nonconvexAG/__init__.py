@@ -963,14 +963,8 @@ def memmap_solution_path_LM(design_matrix,
 ################## LM memory mapping with multiprocessing #############################
 #######################################################################################
 # @_jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
-def _memmap_update_smooth_grad_convex_LM_parallel(N,
-                                                  p,
-                                                  X,
-                                                  beta_md,
-                                                  y,
-                                                  _dtype,
-                                                  _order,
-                                                  chunck_size=50000):
+def _memmap_update_smooth_grad_convex_LM_parallel(N, p, X, beta_md, y, _dtype,
+                                                  _order, core_num):
     '''
     Update the gradient of the smooth convex objective component.
     '''
@@ -992,9 +986,8 @@ def _memmap_update_smooth_grad_convex_LM_parallel(N,
 
         # multiprocessing starts here
         ind = _np.arange(p)
-        n_slices = _np.ceil(len(ind) / chunck_size)
         with _mp.Pool(_mp.cpu_count()) as pl:
-            _ = pl.map(__parallel_plus, _np.array_split(ind, n_slices))
+            _ = pl.map(__parallel_plus, _np.array_split(ind, core_num))
         _ = _np.array(_).sum(0)
     elif _order == "C":
 
@@ -1014,9 +1007,8 @@ def _memmap_update_smooth_grad_convex_LM_parallel(N,
 
         # multiprocessing starts here
         ind = _np.arange(N)
-        n_slices = _np.ceil(len(ind) / chunck_size)
         with _mp.Pool(_mp.cpu_count()) as pl:
-            _ = pl.map(__parallel_assign, _np.array_split(ind, n_slices))
+            _ = pl.map(__parallel_assign, _np.array_split(ind, core_num))
         _ = _np.hstack(_)
     _ -= y
     # then calculate _XTXbeta = X.T@X@beta_md = X.T@_
@@ -1038,10 +1030,9 @@ def _memmap_update_smooth_grad_convex_LM_parallel(N,
 
         # multiprocessing starts here
         ind = _np.arange(p)
-        n_slices = _np.ceil(len(ind) / chunck_size)
         with _mp.Pool(_mp.cpu_count()) as pl:
             _XTXbeta = pl.map(__parallel_assign,
-                              _np.array_split(ind, n_slices))
+                              _np.array_split(ind, core_num))
         _XTXbeta = _np.hstack(_XTXbeta)
     elif _order == "C":
 
@@ -1059,9 +1050,8 @@ def _memmap_update_smooth_grad_convex_LM_parallel(N,
 
         # multiprocessing starts here
         ind = _np.arange(N)
-        n_slices = _np.ceil(len(ind) / chunck_size)
         with _mp.Pool(_mp.cpu_count()) as pl:
-            _XTXbeta = pl.map(__parallel_plus, _np.array_split(ind, n_slices))
+            _XTXbeta = pl.map(__parallel_plus, _np.array_split(ind, core_num))
         _XTXbeta = _np.array(_XTXbeta).sum(0)
     del _
     return 1 / N * _XTXbeta
@@ -1069,8 +1059,7 @@ def _memmap_update_smooth_grad_convex_LM_parallel(N,
 
 # @_jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def _memmap_update_smooth_grad_SCAD_LM_parallel(N, p, X, beta_md, y, _lambda,
-                                                a, _dtype, _order,
-                                                chunck_size):
+                                                a, _dtype, _order, core_num):
     '''
     Update the gradient of the smooth objective component for SCAD penalty.
     '''
@@ -1082,14 +1071,13 @@ def _memmap_update_smooth_grad_SCAD_LM_parallel(N, p, X, beta_md, y, _lambda,
         y=y,
         _dtype=_dtype,
         _order=_order,
-        chunck_size=chunck_size) + SCAD_concave_grad(
-            x=beta_md, lambda_=_lambda, a=a)
+        core_num=core_num) + SCAD_concave_grad(x=beta_md, lambda_=_lambda, a=a)
 
 
 # @_jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def _memmap_update_smooth_grad_MCP_LM_parallel(N, p, X, beta_md, y, _lambda,
                                                gamma, _dtype, _order,
-                                               chunck_size):
+                                               core_num):
     '''
     Update the gradient of the smooth objective component for MCP penalty.
     '''
@@ -1101,7 +1089,7 @@ def _memmap_update_smooth_grad_MCP_LM_parallel(N, p, X, beta_md, y, _lambda,
         y=y,
         _dtype=_dtype,
         _order=_order,
-        chunck_size=chunck_size) + MCP_concave_grad(
+        core_num=core_num) + MCP_concave_grad(
             x=beta_md, lambda_=_lambda, gamma=gamma)
 
 
@@ -1112,7 +1100,7 @@ def memmap_lambda_max_LM_parallel(X,
                                   p,
                                   _dtype,
                                   _order,
-                                  chunck_size=50000):
+                                  core_num="NOT DECLARED"):
     """
     Calculate the lambda_max, i.e., the minimum lambda to nullify all penalized betas.
     """
@@ -1123,6 +1111,12 @@ def memmap_lambda_max_LM_parallel(X,
     #     y_temp = y.copy()
     #     y_temp -= _np.mean(y)
     #     y_temp /= _np.std(y)
+    if core_num == "NOT DECLARED":
+        core_num = _mp.cpu_count()
+    else:
+        assert core_num <= _mp.cpu_count(
+        ), "Declared number of cores used for multiprocessing should not exceed number of cores on this machine."
+    assert core_num >= 2, "Multiprocessing should not be used on single-core machines."
 
     grad_at_0 = _memmap_update_smooth_grad_convex_LM_parallel(
         N=N,
@@ -1132,7 +1126,7 @@ def memmap_lambda_max_LM_parallel(X,
         y=y,
         _dtype=_dtype,
         _order=_order,
-        chunck_size=chunck_size)
+        core_num=core_num)
     lambda_max = _np.linalg.norm(grad_at_0[1:], ord=_np.infty)
     return lambda_max
 
@@ -1152,10 +1146,17 @@ def memmap_UAG_LM_SCAD_MCP_parallel(design_matrix,
                                     penalty="SCAD",
                                     a=3.7,
                                     gamma=2.,
-                                    chunck_size=50000):
+                                    core_num="NOT DECLARED"):
     '''
     Carry out the optimization for penalized LM for a fixed lambda.
     '''
+    if core_num == "NOT DECLARED":
+        core_num = _mp.cpu_count()
+    else:
+        assert core_num <= _mp.cpu_count(
+        ), "Declared number of cores used for multiprocessing should not exceed number of cores on this machine."
+    assert core_num >= 2, "Multiprocessing should not be used on single-core machines."
+
     X = design_matrix
     y = outcome
     _itemsize = _np.dtype(_dtype).itemsize
@@ -1178,10 +1179,9 @@ def memmap_UAG_LM_SCAD_MCP_parallel(design_matrix,
 
             # multiprocessing starts here
             ind = _np.arange(p)
-            n_slices = _np.ceil(len(ind) / chunck_size)
             with _mp.Pool(_mp.cpu_count()) as pl:
                 _XTy = pl.map(__parallel_assign,
-                              _np.array_split(ind, n_slices))
+                              _np.array_split(ind, core_num))
             _XTy = _np.hstack(_XTy)
         elif _order == "C":
 
@@ -1199,9 +1199,8 @@ def memmap_UAG_LM_SCAD_MCP_parallel(design_matrix,
 
             # multiprocessing starts here
             ind = _np.arange(N)
-            n_slices = _np.ceil(len(ind) / chunck_size)
             with _mp.Pool(_mp.cpu_count()) as pl:
-                _XTy = pl.map(__parallel_plus, _np.array_split(ind, n_slices))
+                _XTy = pl.map(__parallel_plus, _np.array_split(ind, core_num))
             _XTy = _np.array(_XTy).sum(0)
         beta = _np.sign(_XTy)
     else:
@@ -1248,7 +1247,7 @@ def memmap_UAG_LM_SCAD_MCP_parallel(design_matrix,
                 a=a,
                 _dtype=_dtype,
                 _order=_order,
-                chunck_size=chunck_size)
+                core_num=core_num)
             beta = soft_thresholding(x=beta - opt_lambda * smooth_grad,
                                      lambda_=opt_lambda * _lambda)
             beta_ag = soft_thresholding(x=beta_md - opt_beta * smooth_grad,
@@ -1286,7 +1285,7 @@ def memmap_UAG_LM_SCAD_MCP_parallel(design_matrix,
                 gamma=gamma,
                 _dtype=_dtype,
                 _order=_order,
-                chunck_size=chunck_size)
+                core_num=core_num)
             beta = soft_thresholding(x=beta - opt_lambda * smooth_grad,
                                      lambda_=opt_lambda * _lambda)
             beta_ag = soft_thresholding(x=beta_md - opt_beta * smooth_grad,
@@ -1311,10 +1310,17 @@ def memmap_solution_path_LM_parallel(design_matrix,
                                      gamma=2.,
                                      _dtype='float32',
                                      _order="F",
-                                     chunck_size=50000):
+                                     core_num="NOT DECLARED"):
     '''
     Carry out the optimization for the solution path without the strong rule.
     '''
+    if core_num == "NOT DECLARED":
+        core_num = _mp.cpu_count()
+    else:
+        assert core_num <= _mp.cpu_count(
+        ), "Declared number of cores used for multiprocessing should not exceed number of cores on this machine."
+    assert core_num >= 2, "Multiprocessing should not be used on single-core machines."
+
     beta_mat = _np.zeros((len(lambda_) + 1, p))
     for j in range(len(lambda_)):
         beta_mat[j + 1, :] = memmap_UAG_LM_SCAD_MCP_parallel(
@@ -1332,7 +1338,7 @@ def memmap_solution_path_LM_parallel(design_matrix,
             gamma=gamma,
             _dtype=_dtype,
             _order=_order,
-            chunck_size=chunck_size)[1]
+            core_num=core_num)[1]
     return beta_mat[1:, :]
 
 ############################################################################
@@ -2123,7 +2129,7 @@ def memmap_solution_path_logistic(design_matrix,
 #######################################################################################
 # @_jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def _memmap_update_smooth_grad_convex_logistic_parallel(
-        N, p, X, beta_md, y, _dtype, _order, chunck_size):
+        N, p, X, beta_md, y, _dtype, _order, core_num):
     '''
     Update the gradient of the smooth convex objective component.
     '''
@@ -2145,9 +2151,8 @@ def _memmap_update_smooth_grad_convex_logistic_parallel(
 
         # multiprocessing starts here
         ind = _np.arange(p)
-        n_slices = _np.ceil(len(ind) / chunck_size)
         with _mp.Pool(_mp.cpu_count()) as pl:
-            _ = pl.map(__parallel_plus, _np.array_split(ind, n_slices))
+            _ = pl.map(__parallel_plus, _np.array_split(ind, core_num))
         _ = _np.array(_).sum(0)
     elif _order == "C":
 
@@ -2167,9 +2172,8 @@ def _memmap_update_smooth_grad_convex_logistic_parallel(
 
         # multiprocessing starts here
         ind = _np.arange(N)
-        n_slices = _np.ceil(len(ind) / chunck_size)
         with _mp.Pool(_mp.cpu_count()) as pl:
-            _ = pl.map(__parallel_assign, _np.array_split(ind, n_slices))
+            _ = pl.map(__parallel_assign, _np.array_split(ind, core_num))
         _ = _np.hstack(_)
     _ = _np.tanh(_ / 2.) / 2. - y + .5
     # then calculate _XTXbeta = X.T@X@beta_md = X.T@_
@@ -2191,10 +2195,9 @@ def _memmap_update_smooth_grad_convex_logistic_parallel(
 
         # multiprocessing starts here
         ind = _np.arange(p)
-        n_slices = _np.ceil(len(ind) / chunck_size)
         with _mp.Pool(_mp.cpu_count()) as pl:
             _XTXbeta = pl.map(__parallel_assign,
-                              _np.array_split(ind, n_slices))
+                              _np.array_split(ind, core_num))
         _XTXbeta = _np.hstack(_XTXbeta)
     elif _order == "C":
 
@@ -2212,9 +2215,8 @@ def _memmap_update_smooth_grad_convex_logistic_parallel(
 
         # multiprocessing starts here
         ind = _np.arange(N)
-        n_slices = _np.ceil(len(ind) / chunck_size)
         with _mp.Pool(_mp.cpu_count()) as pl:
-            _XTXbeta = pl.map(__parallel_plus, _np.array_split(ind, n_slices))
+            _XTXbeta = pl.map(__parallel_plus, _np.array_split(ind, core_num))
         _XTXbeta = _np.array(_XTXbeta).sum(0)
     del _
     return _XTXbeta / (2. * N)
@@ -2223,7 +2225,7 @@ def _memmap_update_smooth_grad_convex_logistic_parallel(
 # @_jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def _memmap_update_smooth_grad_SCAD_logistic_parallel(N, p, X, beta_md, y,
                                                       _lambda, a, _dtype,
-                                                      _order, chunck_size):
+                                                      _order, core_num):
     '''
     Update the gradient of the smooth objective component for SCAD penalty.
     '''
@@ -2235,14 +2237,13 @@ def _memmap_update_smooth_grad_SCAD_logistic_parallel(N, p, X, beta_md, y,
         y=y,
         _dtype=_dtype,
         _order=_order,
-        chunck_size=chunck_size) + SCAD_concave_grad(
-            x=beta_md, lambda_=_lambda, a=a)
+        core_num=core_num) + SCAD_concave_grad(x=beta_md, lambda_=_lambda, a=a)
 
 
 # @_jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def _memmap_update_smooth_grad_MCP_logistic_parallel(N, p, X, beta_md, y,
                                                      _lambda, gamma, _dtype,
-                                                     _order, chunck_size):
+                                                     _order, core_num):
     '''
     Update the gradient of the smooth objective component for MCP penalty.
     '''
@@ -2254,7 +2255,7 @@ def _memmap_update_smooth_grad_MCP_logistic_parallel(N, p, X, beta_md, y,
         y=y,
         _dtype=_dtype,
         _order=_order,
-        chunck_size=chunck_size) + MCP_concave_grad(
+        core_num=core_num) + MCP_concave_grad(
             x=beta_md, lambda_=_lambda, gamma=gamma)
 
 
@@ -2265,7 +2266,7 @@ def memmap_lambda_max_logistic_parallel(X,
                                         p,
                                         _dtype,
                                         _order,
-                                        chunck_size=50000):
+                                        core_num="NOT DECLARED"):
     """
     Calculate the lambda_max, i.e., the minimum lambda to nullify all penalized betas.
     """
@@ -2276,6 +2277,12 @@ def memmap_lambda_max_logistic_parallel(X,
     #     y_temp = y.copy()
     #     y_temp -= _np.mean(y)
     #     y_temp /= _np.std(y)
+    if core_num == "NOT DECLARED":
+        core_num = _mp.cpu_count()
+    else:
+        assert core_num <= _mp.cpu_count(
+        ), "Declared number of cores used for multiprocessing should not exceed number of cores on this machine."
+    assert core_num >= 2, "Multiprocessing should not be used on single-core machines."
 
     grad_at_0 = _memmap_update_smooth_grad_convex_logistic_parallel(
         N=N,
@@ -2285,7 +2292,7 @@ def memmap_lambda_max_logistic_parallel(X,
         y=y,
         _dtype=_dtype,
         _order=_order,
-        chunck_size=chunck_size)
+        core_num=core_num)
     lambda_max = _np.linalg.norm(grad_at_0[1:], ord=_np.infty)
     return lambda_max
 
@@ -2305,10 +2312,17 @@ def memmap_UAG_logistic_SCAD_MCP_parallel(design_matrix,
                                           penalty="SCAD",
                                           a=3.7,
                                           gamma=2.,
-                                          chunck_size=50000):
+                                          core_num="NOT DECLARED"):
     '''
     Carry out the optimization for penalized logistic for a fixed lambda.
     '''
+    if core_num == "NOT DECLARED":
+        core_num = _mp.cpu_count()
+    else:
+        assert core_num <= _mp.cpu_count(
+        ), "Declared number of cores used for multiprocessing should not exceed number of cores on this machine."
+    assert core_num >= 2, "Multiprocessing should not be used on single-core machines."
+
     X = design_matrix
     y = outcome
     _itemsize = _np.dtype(_dtype).itemsize
@@ -2331,10 +2345,9 @@ def memmap_UAG_logistic_SCAD_MCP_parallel(design_matrix,
 
             # multiprocessing starts here
             ind = _np.arange(p)
-            n_slices = _np.ceil(len(ind) / chunck_size)
             with _mp.Pool(_mp.cpu_count()) as pl:
                 _XTy = pl.map(__parallel_assign,
-                              _np.array_split(ind, n_slices))
+                              _np.array_split(ind, core_num))
             _XTy = _np.hstack(_XTy)
         elif _order == "C":
 
@@ -2352,9 +2365,8 @@ def memmap_UAG_logistic_SCAD_MCP_parallel(design_matrix,
 
             # multiprocessing starts here
             ind = _np.arange(N)
-            n_slices = _np.ceil(len(ind) / chunck_size)
             with _mp.Pool(_mp.cpu_count()) as pl:
-                _XTy = pl.map(__parallel_plus, _np.array_split(ind, n_slices))
+                _XTy = pl.map(__parallel_plus, _np.array_split(ind, core_num))
             _XTy = _np.array(_XTy).sum(0)
         beta = _np.sign(_XTy)
     else:
@@ -2401,7 +2413,7 @@ def memmap_UAG_logistic_SCAD_MCP_parallel(design_matrix,
                 a=a,
                 _dtype=_dtype,
                 _order=_order,
-                chunck_size=chunck_size)
+                core_num=core_num)
             beta = soft_thresholding(x=beta - opt_lambda * smooth_grad,
                                      lambda_=opt_lambda * _lambda)
             beta_ag = soft_thresholding(x=beta_md - opt_beta * smooth_grad,
