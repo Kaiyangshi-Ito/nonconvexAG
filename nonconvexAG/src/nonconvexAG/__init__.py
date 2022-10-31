@@ -964,7 +964,7 @@ def memmap_solution_path_LM(design_matrix,
 #######################################################################################
 # @_jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def _memmap_update_smooth_grad_convex_LM_parallel(N, p, X, beta_md, y, _dtype,
-                                                  _order, core_num):
+                                                  _order, core_num, multp):
     '''
     Update the gradient of the smooth convex objective component.
     '''
@@ -974,41 +974,63 @@ def _memmap_update_smooth_grad_convex_LM_parallel(N, p, X, beta_md, y, _dtype,
 
         def __parallel_plus(_ind):
             import numpy as _np
-            __ = _np.zeros(N)
-            for j in _ind:
-                _X = _np.memmap(X,
-                                dtype=_dtype,
-                                mode='r',
-                                offset=j * _itemsize * N,
-                                shape=(N, ))
-                __ += _X * beta_md[j]
-            return __
+            _X = _np.memmap(X,
+                            dtype=_dtype,
+                            mode='r',
+                            offset=_ind[0] * _itemsize * N,
+                            shape=(N, len(_ind)))
+            return _X @ beta_md[_ind]
+#             __ = _np.zeros(N)
+#             for j in _ind:
+#                 _X = _np.memmap(X,
+#                                 dtype=_dtype,
+#                                 mode='r',
+#                                 offset=j * _itemsize * N,
+#                                 shape=(N, ))
+#                 __ += _X * beta_md[j]
+#             return __
 
-        # multiprocessing starts here
+# multiprocessing starts here
+
         ind = _np.arange(p)
-        with _mp.Pool(_mp.cpu_count()) as pl:
-            _ = pl.map(__parallel_plus, _np.array_split(ind, core_num))
+        _splited_array = _np.array_split(ind, core_num * multp)
+        _splited_array = [
+            __array for __array in _splited_array if __array.size != 0
+        ]
+        with _mp.Pool(core_num) as pl:
+            _ = pl.map(__parallel_plus, _splited_array)
         _ = _np.array(_).sum(0)
     elif _order == "C":
 
         def __parallel_assign(_ind):
             import numpy as _np
-            k = 0
-            __ = _np.zeros(len(_ind))
-            for j in _ind:
-                _X = _np.memmap(X,
-                                dtype=_dtype,
-                                mode='r',
-                                offset=j * _itemsize * p,
-                                shape=(p, ))
-                __[k] = _X @ beta_md
-                k += 1
-            return __
+            _X = _np.memmap(X,
+                            dtype=_dtype,
+                            mode='r',
+                            offset=_ind[0] * _itemsize * p,
+                            shape=(p, len(_ind)))
+            return beta_md @ _X
+#             k = 0
+#             __ = _np.zeros(len(_ind))
+#             for j in _ind:
+#                 _X = _np.memmap(X,
+#                                 dtype=_dtype,
+#                                 mode='r',
+#                                 offset=j * _itemsize * p,
+#                                 shape=(p, ))
+#                 __[k] = _X @ beta_md
+#                 k += 1
+#             return __
 
-        # multiprocessing starts here
+# multiprocessing starts here
+
         ind = _np.arange(N)
-        with _mp.Pool(_mp.cpu_count()) as pl:
-            _ = pl.map(__parallel_assign, _np.array_split(ind, core_num))
+        _splited_array = _np.array_split(ind, core_num * multp)
+        _splited_array = [
+            __array for __array in _splited_array if __array.size != 0
+        ]
+        with _mp.Pool(core_num) as pl:
+            _ = pl.map(__parallel_assign, _splited_array)
         _ = _np.hstack(_)
     _ -= y
     # then calculate _XTXbeta = X.T@X@beta_md = X.T@_
@@ -1016,42 +1038,63 @@ def _memmap_update_smooth_grad_convex_LM_parallel(N, p, X, beta_md, y, _dtype,
 
         def __parallel_assign(_ind):
             import numpy as _np
-            k = 0
-            __ = _np.zeros(len(_ind))
-            for j in _ind:
-                _X = _np.memmap(X,
-                                dtype=_dtype,
-                                mode='r',
-                                offset=j * _itemsize * N,
-                                shape=(N, ))
-                __[k] = _X @ _
-                k += 1
-            return __
+            _X = _np.memmap(X,
+                            dtype=_dtype,
+                            mode='r',
+                            offset=_ind[0] * _itemsize * N,
+                            shape=(N, len(_ind)))
+            return _ @ _X
+#             k = 0
+#             __ = _np.zeros(len(_ind))
+#             for j in _ind:
+#                 _X = _np.memmap(X,
+#                                 dtype=_dtype,
+#                                 mode='r',
+#                                 offset=j * _itemsize * N,
+#                                 shape=(N, ))
+#                 __[k] = _X @ _
+#                 k += 1
+#             return __
 
-        # multiprocessing starts here
+# multiprocessing starts here
+
         ind = _np.arange(p)
-        with _mp.Pool(_mp.cpu_count()) as pl:
-            _XTXbeta = pl.map(__parallel_assign,
-                              _np.array_split(ind, core_num))
+        _splited_array = _np.array_split(ind, core_num * multp)
+        _splited_array = [
+            __array for __array in _splited_array if __array.size != 0
+        ]
+        with _mp.Pool(core_num) as pl:
+            _XTXbeta = pl.map(__parallel_assign, _splited_array)
         _XTXbeta = _np.hstack(_XTXbeta)
     elif _order == "C":
 
         def __parallel_plus(_ind):
             import numpy as _np
-            __ = _np.zeros(p)
-            for j in _ind:
-                _X = _np.memmap(X,
-                                dtype=_dtype,
-                                mode='r',
-                                offset=j * _itemsize * p,
-                                shape=(p, ))
-                __ += _X * _[j]
-            return __
+            _X = _np.memmap(X,
+                            dtype=_dtype,
+                            mode='r',
+                            offset=_ind[0] * _itemsize * p,
+                            shape=(p, len(_ind)))
+            return _X @ _[_ind]
+#             __ = _np.zeros(p)
+#             for j in _ind:
+#                 _X = _np.memmap(X,
+#                                 dtype=_dtype,
+#                                 mode='r',
+#                                 offset=j * _itemsize * p,
+#                                 shape=(p, ))
+#                 __ += _X * _[j]
+#             return __
 
-        # multiprocessing starts here
+# multiprocessing starts here
+
         ind = _np.arange(N)
-        with _mp.Pool(_mp.cpu_count()) as pl:
-            _XTXbeta = pl.map(__parallel_plus, _np.array_split(ind, core_num))
+        _splited_array = _np.array_split(ind, core_num * multp)
+        _splited_array = [
+            __array for __array in _splited_array if __array.size != 0
+        ]
+        with _mp.Pool(core_num) as pl:
+            _XTXbeta = pl.map(__parallel_plus, _splited_array)
         _XTXbeta = _np.array(_XTXbeta).sum(0)
     del _
     return 1 / N * _XTXbeta
@@ -1059,7 +1102,8 @@ def _memmap_update_smooth_grad_convex_LM_parallel(N, p, X, beta_md, y, _dtype,
 
 # @_jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def _memmap_update_smooth_grad_SCAD_LM_parallel(N, p, X, beta_md, y, _lambda,
-                                                a, _dtype, _order, core_num):
+                                                a, _dtype, _order, core_num,
+                                                multp):
     '''
     Update the gradient of the smooth objective component for SCAD penalty.
     '''
@@ -1071,13 +1115,14 @@ def _memmap_update_smooth_grad_SCAD_LM_parallel(N, p, X, beta_md, y, _lambda,
         y=y,
         _dtype=_dtype,
         _order=_order,
-        core_num=core_num) + SCAD_concave_grad(x=beta_md, lambda_=_lambda, a=a)
+        core_num=core_num,
+        multp=multp) + SCAD_concave_grad(x=beta_md, lambda_=_lambda, a=a)
 
 
 # @_jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def _memmap_update_smooth_grad_MCP_LM_parallel(N, p, X, beta_md, y, _lambda,
-                                               gamma, _dtype, _order,
-                                               core_num):
+                                               gamma, _dtype, _order, core_num,
+                                               multp):
     '''
     Update the gradient of the smooth objective component for MCP penalty.
     '''
@@ -1089,7 +1134,8 @@ def _memmap_update_smooth_grad_MCP_LM_parallel(N, p, X, beta_md, y, _lambda,
         y=y,
         _dtype=_dtype,
         _order=_order,
-        core_num=core_num) + MCP_concave_grad(
+        core_num=core_num,
+        multp=multp) + MCP_concave_grad(
             x=beta_md, lambda_=_lambda, gamma=gamma)
 
 
@@ -1100,7 +1146,8 @@ def memmap_lambda_max_LM_parallel(X,
                                   p,
                                   _dtype,
                                   _order,
-                                  core_num="NOT DECLARED"):
+                                  core_num="NOT DECLARED",
+                                  multp=1):
     """
     Calculate the lambda_max, i.e., the minimum lambda to nullify all penalized betas.
     """
@@ -1126,7 +1173,8 @@ def memmap_lambda_max_LM_parallel(X,
         y=y,
         _dtype=_dtype,
         _order=_order,
-        core_num=core_num)
+        core_num=core_num,
+        multp=multp)
     lambda_max = _np.linalg.norm(grad_at_0[1:], ord=_np.infty)
     return lambda_max
 
@@ -1146,7 +1194,8 @@ def memmap_UAG_LM_SCAD_MCP_parallel(design_matrix,
                                     penalty="SCAD",
                                     a=3.7,
                                     gamma=2.,
-                                    core_num="NOT DECLARED"):
+                                    core_num="NOT DECLARED",
+                                    multp=1):
     '''
     Carry out the optimization for penalized LM for a fixed lambda.
     '''
@@ -1165,42 +1214,63 @@ def memmap_UAG_LM_SCAD_MCP_parallel(design_matrix,
 
             def __parallel_assign(_ind):
                 import numpy as _np
-                k = 0
-                __ = _np.zeros(len(_ind))
-                for j in _ind:
-                    _X = _np.memmap(X,
-                                    dtype=_dtype,
-                                    mode='r',
-                                    offset=j * _itemsize * N,
-                                    shape=(N, ))
-                    __[k] = _X @ y / _np.var(_X) / len(y)
-                    k += 1
-                return __
+                _X = _np.memmap(X,
+                                dtype=_dtype,
+                                mode='r',
+                                offset=_ind[0] * _itemsize * N,
+                                shape=(N, len(_ind)))
+                return y @ _X / _np.var(_X, 0).reshape(1, -1) / len(y)
+#                 k = 0
+#                 __ = _np.zeros(len(_ind))
+#                 for j in _ind:
+#                     _X = _np.memmap(X,
+#                                     dtype=_dtype,
+#                                     mode='r',
+#                                     offset=j * _itemsize * N,
+#                                     shape=(N, ))
+#                     __[k] = _X @ y / _np.var(_X) / len(y)
+#                     k += 1
+#                 return __
 
-            # multiprocessing starts here
+# multiprocessing starts here
+
             ind = _np.arange(p)
-            with _mp.Pool(_mp.cpu_count()) as pl:
-                _XTy = pl.map(__parallel_assign,
-                              _np.array_split(ind, core_num))
+            _splited_array = _np.array_split(ind, core_num * multp)
+            _splited_array = [
+                __array for __array in _splited_array if __array.size != 0
+            ]
+            with _mp.Pool(core_num) as pl:
+                _XTy = pl.map(__parallel_assign, _splited_array)
             _XTy = _np.hstack(_XTy)
         elif _order == "C":
 
             def __parallel_plus(_ind):
                 import numpy as _np
-                __ = _np.zeros(p)
-                for j in _ind:
-                    _X = _np.memmap(X,
-                                    dtype=_dtype,
-                                    mode='r',
-                                    offset=j * _itemsize * p,
-                                    shape=(p, ))
-                    __ += _X * y[j]
-                return __
+                _X = _np.memmap(X,
+                                dtype=_dtype,
+                                mode='r',
+                                offset=_ind[0] * _itemsize * p,
+                                shape=(p, len(_ind)))
+                return _X @ y[_ind]
+#                 __ = _np.zeros(p)
+#                 for j in _ind:
+#                     _X = _np.memmap(X,
+#                                     dtype=_dtype,
+#                                     mode='r',
+#                                     offset=j * _itemsize * p,
+#                                     shape=(p, ))
+#                     __ += _X * y[j]
+#                 return __
 
-            # multiprocessing starts here
+# multiprocessing starts here
+
             ind = _np.arange(N)
-            with _mp.Pool(_mp.cpu_count()) as pl:
-                _XTy = pl.map(__parallel_plus, _np.array_split(ind, core_num))
+            _splited_array = _np.array_split(ind, core_num * multp)
+            _splited_array = [
+                __array for __array in _splited_array if __array.size != 0
+            ]
+            with _mp.Pool(core_num) as pl:
+                _XTy = pl.map(__parallel_plus, _splited_array)
             _XTy = _np.array(_XTy).sum(0)
         beta = _np.sign(_XTy)
     else:
@@ -1247,7 +1317,8 @@ def memmap_UAG_LM_SCAD_MCP_parallel(design_matrix,
                 a=a,
                 _dtype=_dtype,
                 _order=_order,
-                core_num=core_num)
+                core_num=core_num,
+                multp=multp)
             beta = soft_thresholding(x=beta - opt_lambda * smooth_grad,
                                      lambda_=opt_lambda * _lambda)
             beta_ag = soft_thresholding(x=beta_md - opt_beta * smooth_grad,
@@ -1285,7 +1356,8 @@ def memmap_UAG_LM_SCAD_MCP_parallel(design_matrix,
                 gamma=gamma,
                 _dtype=_dtype,
                 _order=_order,
-                core_num=core_num)
+                core_num=core_num,
+                multp=multp)
             beta = soft_thresholding(x=beta - opt_lambda * smooth_grad,
                                      lambda_=opt_lambda * _lambda)
             beta_ag = soft_thresholding(x=beta_md - opt_beta * smooth_grad,
@@ -1310,7 +1382,8 @@ def memmap_solution_path_LM_parallel(design_matrix,
                                      gamma=2.,
                                      _dtype='float32',
                                      _order="F",
-                                     core_num="NOT DECLARED"):
+                                     core_num="NOT DECLARED",
+                                     multp=1):
     '''
     Carry out the optimization for the solution path without the strong rule.
     '''
@@ -1338,7 +1411,8 @@ def memmap_solution_path_LM_parallel(design_matrix,
             gamma=gamma,
             _dtype=_dtype,
             _order=_order,
-            core_num=core_num)[1]
+            core_num=core_num,
+            multp=multp)[1]
     return beta_mat[1:, :]
 
 ############################################################################
@@ -2129,7 +2203,7 @@ def memmap_solution_path_logistic(design_matrix,
 #######################################################################################
 # @_jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def _memmap_update_smooth_grad_convex_logistic_parallel(
-        N, p, X, beta_md, y, _dtype, _order, core_num):
+        N, p, X, beta_md, y, _dtype, _order, core_num, multp):
     '''
     Update the gradient of the smooth convex objective component.
     '''
@@ -2139,41 +2213,63 @@ def _memmap_update_smooth_grad_convex_logistic_parallel(
 
         def __parallel_plus(_ind):
             import numpy as _np
-            __ = _np.zeros(N)
-            for j in _ind:
-                _X = _np.memmap(X,
-                                dtype=_dtype,
-                                mode='r',
-                                offset=j * _itemsize * N,
-                                shape=(N, ))
-                __ += _X * beta_md[j]
-            return __
+            _X = _np.memmap(X,
+                            dtype=_dtype,
+                            mode='r',
+                            offset=_ind[0] * _itemsize * N,
+                            shape=(N, len(_ind)))
+            return _X @ beta_md[_ind]
+#             __ = _np.zeros(N)
+#             for j in _ind:
+#                 _X = _np.memmap(X,
+#                                 dtype=_dtype,
+#                                 mode='r',
+#                                 offset=j * _itemsize * N,
+#                                 shape=(N, ))
+#                 __ += _X * beta_md[j]
+#             return __
 
-        # multiprocessing starts here
+# multiprocessing starts here
+
         ind = _np.arange(p)
+        _splited_array = _np.array_split(ind, core_num * multp)
+        _splited_array = [
+            __array for __array in _splited_array if __array.size != 0
+        ]
         with _mp.Pool(_mp.cpu_count()) as pl:
-            _ = pl.map(__parallel_plus, _np.array_split(ind, core_num))
+            _ = pl.map(__parallel_plus, _splited_array)
         _ = _np.array(_).sum(0)
     elif _order == "C":
 
         def __parallel_assign(_ind):
             import numpy as _np
-            k = 0
-            __ = _np.zeros(len(_ind))
-            for j in _ind:
-                _X = _np.memmap(X,
-                                dtype=_dtype,
-                                mode='r',
-                                offset=j * _itemsize * p,
-                                shape=(p, ))
-                __[k] = _X @ beta_md
-                k += 1
-            return __
+            _X = _np.memmap(X,
+                            dtype=_dtype,
+                            mode='r',
+                            offset=_ind[0] * _itemsize * p,
+                            shape=(p, len(_ind)))
+            return beta_md @ _X
+#             k = 0
+#             __ = _np.zeros(len(_ind))
+#             for j in _ind:
+#                 _X = _np.memmap(X,
+#                                 dtype=_dtype,
+#                                 mode='r',
+#                                 offset=j * _itemsize * p,
+#                                 shape=(p, ))
+#                 __[k] = _X @ beta_md
+#                 k += 1
+#             return __
 
-        # multiprocessing starts here
+# multiprocessing starts here
+
         ind = _np.arange(N)
+        _splited_array = _np.array_split(ind, core_num * multp)
+        _splited_array = [
+            __array for __array in _splited_array if __array.size != 0
+        ]
         with _mp.Pool(_mp.cpu_count()) as pl:
-            _ = pl.map(__parallel_assign, _np.array_split(ind, core_num))
+            _ = pl.map(__parallel_assign, _splited_array)
         _ = _np.hstack(_)
     _ = _np.tanh(_ / 2.) / 2. - y + .5
     # then calculate _XTXbeta = X.T@X@beta_md = X.T@_
@@ -2181,42 +2277,63 @@ def _memmap_update_smooth_grad_convex_logistic_parallel(
 
         def __parallel_assign(_ind):
             import numpy as _np
-            k = 0
-            __ = _np.zeros(len(_ind))
-            for j in _ind:
-                _X = _np.memmap(X,
-                                dtype=_dtype,
-                                mode='r',
-                                offset=j * _itemsize * N,
-                                shape=(N, ))
-                __[k] = _X @ _
-                k += 1
-            return __
+            _X = _np.memmap(X,
+                            dtype=_dtype,
+                            mode='r',
+                            offset=_ind[0] * _itemsize * N,
+                            shape=(N, len(_ind)))
+            return _ @ _X
+#             k = 0
+#             __ = _np.zeros(len(_ind))
+#             for j in _ind:
+#                 _X = _np.memmap(X,
+#                                 dtype=_dtype,
+#                                 mode='r',
+#                                 offset=j * _itemsize * N,
+#                                 shape=(N, ))
+#                 __[k] = _X @ _
+#                 k += 1
+#             return __
 
-        # multiprocessing starts here
+# multiprocessing starts here
+
         ind = _np.arange(p)
+        _splited_array = _np.array_split(ind, core_num * multp)
+        _splited_array = [
+            __array for __array in _splited_array if __array.size != 0
+        ]
         with _mp.Pool(_mp.cpu_count()) as pl:
-            _XTXbeta = pl.map(__parallel_assign,
-                              _np.array_split(ind, core_num))
+            _XTXbeta = pl.map(__parallel_assign, _splited_array)
         _XTXbeta = _np.hstack(_XTXbeta)
     elif _order == "C":
 
         def __parallel_plus(_ind):
             import numpy as _np
-            __ = _np.zeros(p)
-            for j in _ind:
-                _X = _np.memmap(X,
-                                dtype=_dtype,
-                                mode='r',
-                                offset=j * _itemsize * p,
-                                shape=(p, ))
-                __ += _X * _[j]
-            return __
+            _X = _np.memmap(X,
+                            dtype=_dtype,
+                            mode='r',
+                            offset=_ind[0] * _itemsize * p,
+                            shape=(p, len(_ind)))
+            return _X @ _[_ind]
+#             __ = _np.zeros(p)
+#             for j in _ind:
+#                 _X = _np.memmap(X,
+#                                 dtype=_dtype,
+#                                 mode='r',
+#                                 offset=j * _itemsize * p,
+#                                 shape=(p, ))
+#                 __ += _X * _[j]
+#             return __
 
-        # multiprocessing starts here
+# multiprocessing starts here
+
         ind = _np.arange(N)
+        _splited_array = _np.array_split(ind, core_num * multp)
+        _splited_array = [
+            __array for __array in _splited_array if __array.size != 0
+        ]
         with _mp.Pool(_mp.cpu_count()) as pl:
-            _XTXbeta = pl.map(__parallel_plus, _np.array_split(ind, core_num))
+            _XTXbeta = pl.map(__parallel_plus, _splited_array)
         _XTXbeta = _np.array(_XTXbeta).sum(0)
     del _
     return _XTXbeta / (2. * N)
@@ -2225,7 +2342,7 @@ def _memmap_update_smooth_grad_convex_logistic_parallel(
 # @_jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def _memmap_update_smooth_grad_SCAD_logistic_parallel(N, p, X, beta_md, y,
                                                       _lambda, a, _dtype,
-                                                      _order, core_num):
+                                                      _order, core_num, multp):
     '''
     Update the gradient of the smooth objective component for SCAD penalty.
     '''
@@ -2237,13 +2354,14 @@ def _memmap_update_smooth_grad_SCAD_logistic_parallel(N, p, X, beta_md, y,
         y=y,
         _dtype=_dtype,
         _order=_order,
-        core_num=core_num) + SCAD_concave_grad(x=beta_md, lambda_=_lambda, a=a)
+        core_num=core_num,
+        multp=multp) + SCAD_concave_grad(x=beta_md, lambda_=_lambda, a=a)
 
 
 # @_jit(nopython=True, cache=True, parallel=True, fastmath=True, nogil=True)
 def _memmap_update_smooth_grad_MCP_logistic_parallel(N, p, X, beta_md, y,
                                                      _lambda, gamma, _dtype,
-                                                     _order, core_num):
+                                                     _order, core_num, multp):
     '''
     Update the gradient of the smooth objective component for MCP penalty.
     '''
@@ -2255,7 +2373,8 @@ def _memmap_update_smooth_grad_MCP_logistic_parallel(N, p, X, beta_md, y,
         y=y,
         _dtype=_dtype,
         _order=_order,
-        core_num=core_num) + MCP_concave_grad(
+        core_num=core_num,
+        multp=multp) + MCP_concave_grad(
             x=beta_md, lambda_=_lambda, gamma=gamma)
 
 
@@ -2266,7 +2385,8 @@ def memmap_lambda_max_logistic_parallel(X,
                                         p,
                                         _dtype,
                                         _order,
-                                        core_num="NOT DECLARED"):
+                                        core_num="NOT DECLARED",
+                                        multp=1):
     """
     Calculate the lambda_max, i.e., the minimum lambda to nullify all penalized betas.
     """
@@ -2292,7 +2412,8 @@ def memmap_lambda_max_logistic_parallel(X,
         y=y,
         _dtype=_dtype,
         _order=_order,
-        core_num=core_num)
+        core_num=core_num,
+        multp=multp)
     lambda_max = _np.linalg.norm(grad_at_0[1:], ord=_np.infty)
     return lambda_max
 
@@ -2312,7 +2433,8 @@ def memmap_UAG_logistic_SCAD_MCP_parallel(design_matrix,
                                           penalty="SCAD",
                                           a=3.7,
                                           gamma=2.,
-                                          core_num="NOT DECLARED"):
+                                          core_num="NOT DECLARED",
+                                          multp=1):
     '''
     Carry out the optimization for penalized logistic for a fixed lambda.
     '''
@@ -2331,42 +2453,63 @@ def memmap_UAG_logistic_SCAD_MCP_parallel(design_matrix,
 
             def __parallel_assign(_ind):
                 import numpy as _np
-                k = 0
-                __ = _np.zeros(len(_ind))
-                for j in _ind:
-                    _X = _np.memmap(X,
-                                    dtype=_dtype,
-                                    mode='r',
-                                    offset=j * _itemsize * N,
-                                    shape=(N, ))
-                    __[k] = _X @ y
-                    k += 1
-                return __
+                _X = _np.memmap(X,
+                                dtype=_dtype,
+                                mode='r',
+                                offset=_ind[0] * _itemsize * N,
+                                shape=(N, len(_ind)))
+                return y @ _X
+#                 k = 0
+#                 __ = _np.zeros(len(_ind))
+#                 for j in _ind:
+#                     _X = _np.memmap(X,
+#                                     dtype=_dtype,
+#                                     mode='r',
+#                                     offset=j * _itemsize * N,
+#                                     shape=(N, ))
+#                     __[k] = _X @ y
+#                     k += 1
+#                 return __
 
-            # multiprocessing starts here
+# multiprocessing starts here
+
             ind = _np.arange(p)
+            _splited_array = _np.array_split(ind, core_num * multp)
+            _splited_array = [
+                __array for __array in _splited_array if __array.size != 0
+            ]
             with _mp.Pool(_mp.cpu_count()) as pl:
-                _XTy = pl.map(__parallel_assign,
-                              _np.array_split(ind, core_num))
+                _XTy = pl.map(__parallel_assign, _splited_array)
             _XTy = _np.hstack(_XTy)
         elif _order == "C":
 
             def __parallel_plus(_ind):
                 import numpy as _np
-                __ = _np.zeros(p)
-                for j in _ind:
-                    _X = _np.memmap(X,
-                                    dtype=_dtype,
-                                    mode='r',
-                                    offset=j * _itemsize * p,
-                                    shape=(p, ))
-                    __ += _X * y[j]
-                return __
+                _X = _np.memmap(X,
+                                dtype=_dtype,
+                                mode='r',
+                                offset=_ind[0] * _itemsize * p,
+                                shape=(p, len(_ind)))
+                return _X @ y[_ind]
+#                 __ = _np.zeros(p)
+#                 for j in _ind:
+#                     _X = _np.memmap(X,
+#                                     dtype=_dtype,
+#                                     mode='r',
+#                                     offset=j * _itemsize * p,
+#                                     shape=(p, ))
+#                     __ += _X * y[j]
+#                 return __
 
-            # multiprocessing starts here
+# multiprocessing starts here
+
             ind = _np.arange(N)
+            _splited_array = _np.array_split(ind, core_num * multp)
+            _splited_array = [
+                __array for __array in _splited_array if __array.size != 0
+            ]
             with _mp.Pool(_mp.cpu_count()) as pl:
-                _XTy = pl.map(__parallel_plus, _np.array_split(ind, core_num))
+                _XTy = pl.map(__parallel_plus, _splited_array)
             _XTy = _np.array(_XTy).sum(0)
         beta = _np.sign(_XTy)
     else:
@@ -2413,7 +2556,8 @@ def memmap_UAG_logistic_SCAD_MCP_parallel(design_matrix,
                 a=a,
                 _dtype=_dtype,
                 _order=_order,
-                core_num=core_num)
+                core_num=core_num,
+                multp=multp)
             beta = soft_thresholding(x=beta - opt_lambda * smooth_grad,
                                      lambda_=opt_lambda * _lambda)
             beta_ag = soft_thresholding(x=beta_md - opt_beta * smooth_grad,
