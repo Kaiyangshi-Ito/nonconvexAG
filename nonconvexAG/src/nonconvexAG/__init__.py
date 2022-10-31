@@ -2618,10 +2618,19 @@ def memmap_solution_path_logistic_parallel(design_matrix,
                                            a=3.7,
                                            gamma=2.,
                                            _dtype='float32',
-                                           _order="F"):
+                                           _order="F",
+                                           core_num="NOT DECLARED",
+                                           multp=1):
     '''
     Carry out the optimization for the solution path without the strong rule.
     '''
+    if core_num == "NOT DECLARED":
+        core_num = _mp.cpu_count()
+    else:
+        assert core_num <= _mp.cpu_count(
+        ), "Declared number of cores used for multiprocessing should not exceed number of cores on this machine."
+    assert core_num >= 2, "Multiprocessing should not be used on single-core machines."
+
     beta_mat = _np.zeros((len(lambda_) + 1, p))
     for j in range(len(lambda_)):
         beta_mat[j + 1, :] = memmap_UAG_logistic_SCAD_MCP_parallel(
@@ -2639,5 +2648,6 @@ def memmap_solution_path_logistic_parallel(design_matrix,
             gamma=gamma,
             _dtype=_dtype,
             _order=_order,
-        )[1]
+            core_num=core_num,
+            multp=multp)[1]
     return beta_mat[1:, :]
