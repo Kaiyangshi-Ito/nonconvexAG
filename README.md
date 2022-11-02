@@ -31,4 +31,4 @@ The summary of the simulation results is [here](/paper/simulation_study/summary.
 
 Some algebra calculations from the paper can be found at [this SageMath notebook](/paper/SageMath_algebra.ipynb); the MATLAB codes to generate plots are [Figure 1-left](/paper/optimize_b_k.m) and [Figure 1-right](/paper/tighter_lower_bound_plot.m).
 
-The manual for the PyPI package [`nonconvexAG`](https://pypi.org/project/nonconvexAG/) can be found [here](/nonconvexAG/README.md).
+<!-- The manual for the PyPI package [`nonconvexAG`](https://pypi.org/project/nonconvexAG/) can be found [here](/nonconvexAG/README.md). -->
