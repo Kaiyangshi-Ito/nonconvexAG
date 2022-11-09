@@ -1,0 +1,121 @@
+/var/spool/slurmd/job10933901/slurm_script: line 9: ./program: No such file or directory
+
+Lmod is automatically replacing "intel/2020.1.217" with "gcc/9.3.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) blis/0.8.1     2) flexiblas/3.0.4     3) openmpi/4.0.3
+
+Ignoring pip: markers 'python_version < "3"' don't match your environment
+Looking in links: /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/avx2, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/generic, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic
+Requirement already up-to-date: pip in /home/kyang/jupyter_py3/lib/python3.8/site-packages (22.1.2+computecanada)
+Ignoring pip: markers 'python_version < "3"' don't match your environment
+Looking in links: /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/avx2, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/generic, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic
+WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f53bc40>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/rpy2/
+WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f53ba30>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/rpy2/
+WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f53b730>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/rpy2/
+WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f53b520>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/rpy2/
+WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f53b310>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/rpy2/
+Requirement already up-to-date: rpy2 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (3.1.0+computecanada)
+WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0ef16760>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/matplotlib/
+WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0ef16910>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/matplotlib/
+WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0ef16a60>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/matplotlib/
+WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0ef16bb0>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/matplotlib/
+WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0ef16d00>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/matplotlib/
+Requirement already up-to-date: matplotlib in /home/kyang/jupyter_py3/lib/python3.8/site-packages (3.6.1+computecanada)
+WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0ef64160>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/cupy/
+WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0ef64460>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/cupy/
+WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0ef645e0>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/cupy/
+WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0ef64730>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/cupy/
+WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0ef64850>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/cupy/
+Requirement already up-to-date: cupy in /home/kyang/jupyter_py3/lib/python3.8/site-packages (11.2.0+computecanada)
+WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f05deb0>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/numpy/
+WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f068040>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/numpy/
+WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f0681f0>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/numpy/
+WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f068370>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/numpy/
+WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f0684c0>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/numpy/
+Requirement already up-to-date: numpy in /home/kyang/jupyter_py3/lib/python3.8/site-packages (1.23.0+computecanada)
+WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f06b5e0>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/scipy/
+WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f06b8e0>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/scipy/
+WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f06ba60>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/scipy/
+WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f06bbb0>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/scipy/
+WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.VerifiedHTTPSConnection object at 0x14ec0f06bcd0>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/scipy/
+Requirement already up-to-date: scipy in /home/kyang/jupyter_py3/lib/python3.8/site-packages (1.8.0+computecanada)
+Requirement already satisfied, skipping upgrade: tzlocal in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (2.1+computecanada)
+Requirement already satisfied, skipping upgrade: simplegeneric in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (0.8.1+computecanada)
+Requirement already satisfied, skipping upgrade: jinja2 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (3.1.2+computecanada)
+Requirement already satisfied, skipping upgrade: pytest in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (7.2.0)
+Requirement already satisfied, skipping upgrade: cffi>=1.0.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (1.15.0+computecanada)
+Requirement already satisfied, skipping upgrade: pytz in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (2022.5)
+Requirement already satisfied, skipping upgrade: kiwisolver>=1.0.1 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (1.4.4+computecanada)
+Requirement already satisfied, skipping upgrade: fonttools>=4.22.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (4.38.0+computecanada)
+Requirement already satisfied, skipping upgrade: pyparsing>=2.2.1 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (3.0.9+computecanada)
+Requirement already satisfied, skipping upgrade: cycler>=0.10 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (0.11.0+computecanada)
+Requirement already satisfied, skipping upgrade: contourpy>=1.0.1 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (1.0.5+computecanada)
+Requirement already satisfied, skipping upgrade: packaging>=20.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (21.3+computecanada)
+Requirement already satisfied, skipping upgrade: pillow>=6.2.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (9.2.0+computecanada)
+Requirement already satisfied, skipping upgrade: python-dateutil>=2.7 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (2.8.2+computecanada)
+Requirement already satisfied, skipping upgrade: fastrlock>=0.5 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from cupy) (0.8+computecanada)
+Requirement already satisfied, skipping upgrade: MarkupSafe>=2.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from jinja2->rpy2) (2.1.1+computecanada)
+Requirement already satisfied, skipping upgrade: pluggy<2.0,>=0.12 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (1.0.0+computecanada)
+Requirement already satisfied, skipping upgrade: exceptiongroup>=1.0.0rc8; python_version < "3.11" in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (1.0.0)
+Requirement already satisfied, skipping upgrade: iniconfig in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (1.1.1+computecanada)
+Requirement already satisfied, skipping upgrade: attrs>=19.2.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (22.1.0+computecanada)
+Requirement already satisfied, skipping upgrade: tomli>=1.0.0; python_version < "3.11" in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (2.0.1+computecanada)
+Requirement already satisfied, skipping upgrade: pycparser in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from cffi>=1.0.0->rpy2) (2.21+computecanada)
+Requirement already satisfied, skipping upgrade: six>=1.5 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from python-dateutil>=2.7->matplotlib) (1.16.0+computecanada)
+Wed Nov  2 03:40:19 2022       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 515.65.01    Driver Version: 515.65.01    CUDA Version: 11.7     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  NVIDIA A100-SXM...  Off  | 00000000:41:00.0 Off |                    0 |
+| N/A   29C    P0    51W / 400W |      0MiB / 40960MiB |      0%      Default |
+|                               |                      |             Disabled |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|  No running processes found                                                 |
++-----------------------------------------------------------------------------+
+Architecture:        x86_64
+CPU op-mode(s):      32-bit, 64-bit
+Byte Order:          Little Endian
+Address sizes:       48 bits physical, 48 bits virtual
+CPU(s):              48
+On-line CPU(s) list: 0-47
+Thread(s) per core:  1
+Core(s) per socket:  24
+Socket(s):           2
+NUMA node(s):        8
+Vendor ID:           AuthenticAMD
+CPU family:          25
+Model:               1
+Model name:          AMD EPYC 7413 24-Core Processor
+Stepping:            1
+CPU MHz:             2644.801
+BogoMIPS:            5289.60
+Virtualization:      AMD-V
+L1d cache:           32K
+L1i cache:           32K
+L2 cache:            512K
+L3 cache:            32768K
+NUMA node0 CPU(s):   0-5
+NUMA node1 CPU(s):   6-11
+NUMA node2 CPU(s):   12-17
+NUMA node3 CPU(s):   18-23
+NUMA node4 CPU(s):   24-29
+NUMA node5 CPU(s):   30-35
+NUMA node6 CPU(s):   36-41
+NUMA node7 CPU(s):   42-47
+Flags:               fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl nonstop_tsc cpuid extd_apicid aperfmperf pni pclmulqdq monitor ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 invpcid_single hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 invpcid cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload vgif v_spec_ctrl umip pku ospke vaes vpclmulqdq rdpid overflow_recov succor smca
+The installed CuPy version is: 11.2.0
+The CUDA device has compute capability of: 80
+Now running: signal recovery performance simulations for SCAD and MCP-penalized linear models using AG; with strong rules enabled.
+simulating from R done!

@@ -1,0 +1,93 @@
+/var/spool/slurmd/job10933905/slurm_script: line 9: ./program: No such file or directory
+
+Lmod is automatically replacing "intel/2020.1.217" with "gcc/9.3.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) blis/0.8.1     2) flexiblas/3.0.4     3) openmpi/4.0.3
+
+Ignoring pip: markers 'python_version < "3"' don't match your environment
+Looking in links: /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/avx2, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/generic, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic
+Requirement already up-to-date: pip in /home/kyang/jupyter_py3/lib/python3.8/site-packages (22.1.2+computecanada)
+Ignoring pip: markers 'python_version < "3"' don't match your environment
+Looking in links: /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/avx2, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/generic, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic
+Requirement already satisfied: rpy2 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (3.1.0+computecanada)
+Requirement already satisfied: matplotlib in /home/kyang/jupyter_py3/lib/python3.8/site-packages (3.6.1+computecanada)
+Requirement already satisfied: cupy in /home/kyang/jupyter_py3/lib/python3.8/site-packages (11.2.0+computecanada)
+Requirement already satisfied: numpy in /home/kyang/jupyter_py3/lib/python3.8/site-packages (1.23.0+computecanada)
+Requirement already satisfied: scipy in /home/kyang/jupyter_py3/lib/python3.8/site-packages (1.8.0+computecanada)
+Requirement already satisfied: simplegeneric in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (0.8.1+computecanada)
+Requirement already satisfied: jinja2 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (3.1.2+computecanada)
+Requirement already satisfied: cffi>=1.0.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (1.15.0+computecanada)
+Requirement already satisfied: pytest in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (7.2.0)
+Requirement already satisfied: pytz in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (2022.5)
+Requirement already satisfied: tzlocal in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from rpy2) (2.1+computecanada)
+Requirement already satisfied: contourpy>=1.0.1 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (1.0.5+computecanada)
+Requirement already satisfied: python-dateutil>=2.7 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (2.8.2+computecanada)
+Requirement already satisfied: fonttools>=4.22.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (4.38.0+computecanada)
+Requirement already satisfied: pillow>=6.2.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (9.2.0+computecanada)
+Requirement already satisfied: kiwisolver>=1.0.1 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (1.4.4+computecanada)
+Requirement already satisfied: pyparsing>=2.2.1 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (3.0.9+computecanada)
+Requirement already satisfied: cycler>=0.10 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (0.11.0+computecanada)
+Requirement already satisfied: packaging>=20.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from matplotlib) (21.3+computecanada)
+Requirement already satisfied: fastrlock>=0.5 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from cupy) (0.8+computecanada)
+Requirement already satisfied: MarkupSafe>=2.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from jinja2->rpy2) (2.1.1+computecanada)
+Requirement already satisfied: pycparser in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from cffi>=1.0.0->rpy2) (2.21+computecanada)
+Requirement already satisfied: attrs>=19.2.0 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (22.1.0+computecanada)
+Requirement already satisfied: iniconfig in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (1.1.1+computecanada)
+Requirement already satisfied: pluggy<2.0,>=0.12 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (1.0.0+computecanada)
+Requirement already satisfied: tomli>=1.0.0; python_version < "3.11" in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (2.0.1+computecanada)
+Requirement already satisfied: exceptiongroup>=1.0.0rc8; python_version < "3.11" in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from pytest->rpy2) (1.0.0)
+Requirement already satisfied: six>=1.5 in /home/kyang/jupyter_py3/lib/python3.8/site-packages (from python-dateutil>=2.7->matplotlib) (1.16.0+computecanada)
+Wed Nov  2 03:36:34 2022       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 515.65.01    Driver Version: 515.65.01    CUDA Version: 11.7     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  NVIDIA A100-SXM...  Off  | 00000000:01:00.0 Off |                    0 |
+| N/A   40C    P0    55W / 400W |      0MiB / 40960MiB |      0%      Default |
+|                               |                      |             Disabled |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|  No running processes found                                                 |
++-----------------------------------------------------------------------------+
+Architecture:        x86_64
+CPU op-mode(s):      32-bit, 64-bit
+Byte Order:          Little Endian
+Address sizes:       48 bits physical, 48 bits virtual
+CPU(s):              48
+On-line CPU(s) list: 0-47
+Thread(s) per core:  1
+Core(s) per socket:  24
+Socket(s):           2
+NUMA node(s):        8
+Vendor ID:           AuthenticAMD
+CPU family:          25
+Model:               1
+Model name:          AMD EPYC 7413 24-Core Processor
+Stepping:            1
+CPU MHz:             2645.227
+BogoMIPS:            5290.45
+Virtualization:      AMD-V
+L1d cache:           32K
+L1i cache:           32K
+L2 cache:            512K
+L3 cache:            32768K
+NUMA node0 CPU(s):   0-5
+NUMA node1 CPU(s):   6-11
+NUMA node2 CPU(s):   12-17
+NUMA node3 CPU(s):   18-23
+NUMA node4 CPU(s):   24-29
+NUMA node5 CPU(s):   30-35
+NUMA node6 CPU(s):   36-41
+NUMA node7 CPU(s):   42-47
+Flags:               fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl nonstop_tsc cpuid extd_apicid aperfmperf pni pclmulqdq monitor ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 invpcid_single hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 invpcid cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload vgif v_spec_ctrl umip pku ospke vaes vpclmulqdq rdpid overflow_recov succor smca
+slurmstepd: error: *** JOB 10933905 ON ng31006 CANCELLED AT 2022-11-09T07:36:42 DUE TO TIME LIMIT ***
