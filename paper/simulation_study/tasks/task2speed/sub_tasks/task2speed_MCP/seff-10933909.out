@@ -1,11 +1,11 @@
-Job ID: 10249597
+Job ID: 10933909
 Cluster: narval
 User/Group: kyang/kyang
 State: COMPLETED (exit code 0)
 Nodes: 1
 Cores per node: 6
-CPU Utilized: 01:37:12
-CPU Efficiency: 16.58% of 09:46:12 core-walltime
-Job Wall-clock time: 01:37:42
+CPU Utilized: 01:37:33
+CPU Efficiency: 16.57% of 09:48:36 core-walltime
+Job Wall-clock time: 01:38:06
 Memory Utilized: 1.06 GB
 Memory Efficiency: 0.59% of 180.66 GB

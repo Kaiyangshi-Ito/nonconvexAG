@@ -53,8 +53,8 @@ CPU family:          23
 Model:               49
 Model name:          AMD EPYC 7532 32-Core Processor
 Stepping:            0
-CPU MHz:             3291.885
-BogoMIPS:            4791.18
+CPU MHz:             3292.007
+BogoMIPS:            4791.16
 Virtualization:      AMD-V
 L1d cache:           32K
 L1i cache:           32K
