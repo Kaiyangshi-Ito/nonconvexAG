@@ -39,8 +39,7 @@ This repository contains simulation study codes and results for [my paper](https
   *  [`task1`](/paper/simulation_study/tasks/task1) and [`task2`](/paper/simulation_study/tasks/task2) contain files to test signal recovery performance for SCAD/MCP-penalized linear models and logistic models using AG; 
   *  [`task1speed`](/paper/simulation_study/tasks/task1speed) and [`task2speed`](/paper/simulation_study/tasks/task2speed) contain files to test $(\epsilon-)$ convergence speed and computing times for SCAD/MCP-penalized linear models and logistic models using AG v.s. proximal gradient v.s. coordinate descent. 
   *  The R codes and results for `ncvreg` simulations are contained in [this directory](/paper/simulation_study/SCAD_MCP) -- click [here for penalized linear models](/paper/simulation_study/SCAD_MCP/LM) or [here for penalized logistic models](/paper/simulation_study/SCAD_MCP/logistic).
-
-Some algebra calculations from the paper can be found at [this SageMath notebook](/paper/SageMath_algebra.ipynb); the MATLAB codes to generate plots are [here fore Figure 1](/paper/optimize_b_k.m).
+- Some algebra calculations from the paper can be found at [this SageMath notebook](/paper/SageMath_algebra.ipynb); the MATLAB codes to generate plots are [here fore Figure 1](/paper/optimize_b_k.m).
 
 
 <!-- The manual for the PyPI package [`nonconvexAG`](https://pypi.org/project/nonconvexAG/) can be found [here](/nonconvexAG/README.md). -->
