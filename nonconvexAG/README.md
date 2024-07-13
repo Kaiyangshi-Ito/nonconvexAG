@@ -3,7 +3,7 @@
 ## Kai Yang
 ## <kai.yang2 "at" mail.mcgill.ca>
 ## License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)
-## [GPG Public key Fingerprint: CC02CF153594774CF956691492B2600D18170329](https://keys.openpgp.org/vks/v1/by-fingerprint/CC02CF153594774CF956691492B2600D18170329)
+## [GPG Public key Fingerprint: B9F863A56220DBD56B91C3E835022A1A5941D810](https://keys.openpgp.org/vks/v1/by-fingerprint/B9F863A56220DBD56B91C3E835022A1A5941D810)
 
 This is an implementation of restarting accelerated gradient algorithm with strong rules for (high-dimensional) nonconvex sparse learning problems. The corresponding paper can be found at [arXiv](https://arxiv.org/abs/2009.10629).
 
