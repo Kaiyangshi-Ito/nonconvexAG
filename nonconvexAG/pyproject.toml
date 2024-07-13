@@ -8,7 +8,7 @@ version = "0.9.5.9"
 authors = [
   { name="Kai Yang", email="kai.yang2@mail.mcgill.ca" },
 ]
-description = "Implementation of accelerated gradient algorithm with strong rules for (high-dimensional) nonconvex sparse learning problems. Restarting, memory-mapping, and multiprocessing are now available."
+description = "Implementation of accelerated gradient algorithm with strong rules for (high-dimensional) nonconvex sparse learning problems. Restarting, memory-mapping, and multiprocessing are now available. Developed by Kai Yang, [GPG Public key Fingerprint: B9F863A56220DBD56B91C3E835022A1A5941D810](https://keys.openpgp.org/vks/v1/by-fingerprint/B9F863A56220DBD56B91C3E835022A1A5941D810)"
 readme = "README.md"
 license = { file="LICENSE" }
 requires-python = ">=3.7"
