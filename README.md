@@ -2,7 +2,7 @@
 
 ## Kai Yang
 ## <kai.yang2 "at" mail.mcgill.ca>
-## License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)
+
 ## [GPG Public key Fingerprint: B9F863A56220DBD56B91C3E835022A1A5941D810](https://keys.openpgp.org/vks/v1/by-fingerprint/B9F863A56220DBD56B91C3E835022A1A5941D810)
 
 
