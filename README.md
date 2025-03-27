@@ -2,8 +2,7 @@
 
 ## Kai Yang
 ## <kai.yang2 "at" mail.mcgill.ca>
-
-## [GPG Public key Fingerprint: B9F863A56220DBD56B91C3E835022A1A5941D810](https://keys.openpgp.org/vks/v1/by-fingerprint/B9F863A56220DBD56B91C3E835022A1A5941D810)
+## [GPG Public key Fingerprint: B080 1753 189F BAFE 10B5  3E8A 0F6C F129 F618 CEEF](https://keys.openpgp.org/vks/v1/by-fingerprint/B0801753189FBAFE10B53E8A0F6CF129F618CEEF)
 
 
 This repository contains simulation study codes and results for my paper, Accelerated Gradient Methods for Sparse Statistical Learning with Nonconvex Penalties -- [DOI link for publication](https://doi.org/10.1007/s11222-023-10371-8) or [arXiv link for preprint](https://arxiv.org/abs/2009.10629). 
