@@ -2,6 +2,7 @@
 
 ## Kai Yang
 ## <kai.yang2 "at" mail.mcgill.ca>
+## ORCID ID: [0000-0001-5505-6886](https://orcid.org/0000-0001-5505-6886)
 ## [GPG Public key Fingerprint: B080 1753 189F BAFE 10B5  3E8A 0F6C F129 F618 CEEF](https://keys.openpgp.org/vks/v1/by-fingerprint/B0801753189FBAFE10B53E8A0F6CF129F618CEEF)
 
 
