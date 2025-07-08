@@ -1,23 +1,118 @@
 [build-system]
-requires = ["setuptools>=61.0", "numpy>=1.16.6", "numba>=0.54.1", "multiprocess>=0.70.6"]
+requires = ["setuptools>=61.0", "wheel", "numpy>=1.16.6"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "nonconvexAG"
-version = "0.9.5.9"
+version = "1.0.16"
 authors = [
   { name="Kai Yang", email="kai.yang2@mail.mcgill.ca" },
 ]
-description = "Implementation of accelerated gradient algorithm with strong rules for (high-dimensional) nonconvex sparse learning problems. Restarting, memory-mapping, and multiprocessing are now available. Developed by Kai Yang, [GPG Public key Fingerprint: B9F863A56220DBD56B91C3E835022A1A5941D810](https://keys.openpgp.org/vks/v1/by-fingerprint/B9F863A56220DBD56B91C3E835022A1A5941D810)"
+description = "Accelerated gradient methods for nonconvex sparse learning with SCAD and MCP penalties"
 readme = "README.md"
 license = { file="LICENSE" }
 requires-python = ">=3.7"
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Mathematics",
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9", 
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Operating System :: OS Independent",
+]
+keywords = ["sparse learning", "nonconvex optimization", "SCAD", "MCP", "accelerated gradient"]
+
+dependencies = [
+    "numpy>=1.16.6",
+    "numba>=0.54.1",
+    "scipy>=1.0.0",
+    "multiprocess>=0.70.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov>=2.0", 
+    "black>=22.0",
+    "isort>=5.0",
+    "flake8>=4.0",
+    "mypy>=0.950",
+    "sphinx>=4.0",
+    "sphinx-rtd-theme>=1.0",
+]
+examples = [
+    "matplotlib>=3.0",
+    "jupyter>=1.0",
+    "scikit-learn>=0.24",
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/Kaiyangshi-Ito/nonconvexAG"
 "Bug Tracker" = "https://github.com/Kaiyangshi-Ito/nonconvexAG/issues"
+"Documentation" = "https://github.com/Kaiyangshi-Ito/nonconvexAG"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_third_party = ["numpy", "numba", "scipy", "pytest"]
+known_first_party = ["nonconvexAG"]
+skip_glob = ["*/setup.py"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = ["-v", "--tb=short", "--strict-markers"]
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[tool.coverage.run]
+source = ["nonconvexAG"]
+branch = true
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+
+[tool.coverage.html]
+directory = "htmlcov"
