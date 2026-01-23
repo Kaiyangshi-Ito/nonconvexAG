@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - '**'
+    paths-ignore:
+      - 'ots_proofs/**'
 
 jobs:
   timestamp:
     runs-on: ubuntu-latest
-    if: github.actor != 'github-actions[bot]'
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     
     permissions:
       contents: write
@@ -21,7 +23,7 @@ jobs:
           fetch-depth: 0
       
       - name: Install OTS
-        run: pip install opentimestamps-client
+        run: pip install --break-system-packages opentimestamps-client
       
       - name: Stamp commit
         run: |
@@ -41,9 +43,8 @@ jobs:
             exit 0
           fi
           
-          git commit -m "Add OTS proof for ${{ github.sha }}"
+          git commit -m "Add OTS proof for ${{ github.sha }} [skip ci]"
           
-          # Retry push up to 3 times in case of race condition
           for i in 1 2 3; do
             git pull --rebase origin "${{ github.ref_name }}" || true
             if git push origin "${{ github.ref_name }}"; then
