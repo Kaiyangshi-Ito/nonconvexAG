@@ -6,14 +6,152 @@ on:
       - '**'
     paths-ignore:
       - 'ots_proofs/**'
+  schedule:
+    - cron: '0 6 28-31 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: timestamp-${{ github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
-  timestamp:
+  upgrade:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
-    
     permissions:
       contents: write
+    timeout-minutes: 5
+    
+    steps:
+      - name: Check if should run
+        run: |
+          echo "SHOULD_RUN=true" >> "$GITHUB_ENV"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            TOMORROW=$(date -d "+1 day" +%d)
+            if [ "$TOMORROW" != "01" ]; then
+              echo "Not last day of month (tomorrow is $TOMORROW), skipping"
+              echo "SHOULD_RUN=false" >> "$GITHUB_ENV"
+            else
+              echo "Last day of month, proceeding"
+            fi
+          fi
+      
+      - name: Checkout
+        if: env.SHOULD_RUN == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Check for pending proofs
+        if: env.SHOULD_RUN == 'true'
+        id: check
+        run: |
+          if [ ! -d "ots_proofs" ]; then
+            echo "has_pending=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          PENDING=0
+          for f in ots_proofs/*.ots; do
+            [ -f "$f" ] || continue
+            # Size prefilter: upgraded files are typically >2KB
+            [ "$(wc -c < "$f")" -gt 2000 ] && continue
+            PENDING=$((PENDING + 1))
+          done
+          
+          echo "pending_count=$PENDING" >> "$GITHUB_OUTPUT"
+          if [ "$PENDING" -gt 0 ]; then
+            echo "has_pending=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_pending=false" >> "$GITHUB_OUTPUT"
+          fi
+      
+      - name: Setup Python
+        if: env.SHOULD_RUN == 'true' && steps.check.outputs.has_pending == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install OTS
+        if: env.SHOULD_RUN == 'true' && steps.check.outputs.has_pending == 'true'
+        run: pip install opentimestamps-client
+      
+      - name: Upgrade pending proofs
+        if: env.SHOULD_RUN == 'true' && steps.check.outputs.has_pending == 'true'
+        run: |
+          set -uo pipefail
+          
+          SCANNED=0 UPGRADED=0 SKIPPED=0 PENDING=0
+          
+          for f in ots_proofs/*.ots; do
+            [ -f "$f" ] || continue
+            SCANNED=$((SCANNED + 1))
+            
+            # Authoritative check: ots info
+            if timeout 30 ots info "$f" 2>&1 | grep -qi "bitcoin"; then
+              SKIPPED=$((SKIPPED + 1))
+              continue
+            fi
+            
+            if timeout 60 ots upgrade "$f" 2>&1; then
+              echo "✓ $f"
+              UPGRADED=$((UPGRADED + 1))
+            else
+              echo "- $f (still pending)"
+              PENDING=$((PENDING + 1))
+            fi
+          done
+          
+          echo ""
+          echo "=== Summary ==="
+          echo "Scanned:  $SCANNED"
+          echo "Upgraded: $UPGRADED"
+          echo "Skipped:  $SKIPPED (already complete)"
+          echo "Pending:  $PENDING"
+      
+      - name: Commit upgrades
+        if: env.SHOULD_RUN == 'true' && steps.check.outputs.has_pending == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ots_proofs/
+          
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+          
+          git commit -m "Upgrade OTS proofs [skip ci]"
+          
+          for i in 1 2 3 4 5; do
+            if git push origin HEAD; then
+              echo "✓ Push successful"
+              exit 0
+            fi
+            echo "Retry $i/5..."
+            git pull --rebase origin HEAD || true
+            sleep $((i * i))
+          done
+          
+          echo "::error::Push failed after 5 attempts"
+          git status
+          git log -1 --oneline
+          exit 1
+
+  timestamp:
+    if: |
+      github.event_name == 'push' &&
+      github.actor != 'github-actions[bot]' &&
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      !contains(github.event.head_commit.message, '[ci skip]') &&
+      !contains(github.event.head_commit.message, '[skip-ci]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 10
     
     steps:
       - name: Checkout
@@ -22,38 +160,286 @@ jobs:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
       
-      - name: Install OTS
-        run: pip install --break-system-packages opentimestamps-client
-      
-      - name: Stamp commit
+      - name: Check if already timestamped
+        id: check
         run: |
-          mkdir -p ots_proofs
-          HASH="${{ github.sha }}"
-          echo "${HASH}" > "ots_proofs/${HASH}.txt"
-          ots stamp "ots_proofs/${HASH}.txt"
+          if [ -f "ots_proofs/${{ github.sha }}.txt" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       
-      - name: Commit proof to repo
+      - name: Setup Python
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install dependencies
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          pip install opentimestamps-client
+          sudo apt-get update -qq && sudo apt-get install -y -qq parallel jq
+      
+      - name: Upgrade pending OTS proofs
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          set -uo pipefail
+          [ ! -d "ots_proofs" ] && exit 0
+          
+          for f in ots_proofs/*.ots; do
+            [ -f "$f" ] || continue
+            timeout 30 ots info "$f" 2>&1 | grep -qi "bitcoin" && continue
+            timeout 60 ots upgrade "$f" 2>&1 && echo "✓ Upgraded: $f" || true
+          done
+      
+      - name: Create timestamp proofs
+        if: steps.check.outputs.skip != 'true'
+        shell: bash
+        env:
+          HASH: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          
+          PROOF_DIR="ots_proofs"
+          mkdir -p "$PROOF_DIR"
+          
+          COMMIT_FILE="${PROOF_DIR}/${HASH}.txt"
+          TSQ_FILE="${PROOF_DIR}/${HASH}.tsq"
+          MANIFEST="${PROOF_DIR}/${HASH}.json"
+          TSA_LIST=".github/tsa_endpoints.txt"
+          
+          # Cleanup function
+          cleanup() { rm -f tmp.json; }
+          trap cleanup EXIT
+          
+          # Fail fast if TSA list missing
+          if [ ! -f "$TSA_LIST" ]; then
+            echo "::error::Missing $TSA_LIST"
+            exit 1
+          fi
+          
+          echo "${HASH}" > "$COMMIT_FILE"
+          
+          jq -n \
+            --arg commit "$HASH" \
+            --arg sha256 "$(sha256sum "$COMMIT_FILE" | cut -d' ' -f1)" \
+            --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{commit: $commit, sha256: $sha256, created_at: $created, proofs: {}}' > "$MANIFEST"
+          
+          # === OpenTimestamps ===
+          echo "=== OpenTimestamps ==="
+          OTS_OK=0
+          if timeout 60 ots stamp "$COMMIT_FILE" 2>&1 && [ -f "${COMMIT_FILE}.ots" ]; then
+            echo "✓ OTS created"
+            jq '.proofs.opentimestamps = {status: "pending", file: "'"${HASH}.txt.ots"'"}' "$MANIFEST" > tmp.json && mv tmp.json "$MANIFEST"
+            OTS_OK=1
+          else
+            echo "✗ OTS failed"
+          fi
+          
+          # === RFC 3161 TSA ===
+          echo ""
+          echo "=== RFC 3161 TSA ==="
+          
+          # Create timestamp query (fail if this fails)
+          if ! openssl ts -query -data "$COMMIT_FILE" -no_nonce -sha256 -cert -out "$TSQ_FILE"; then
+            echo "::error::Failed to create timestamp query"
+            exit 1
+          fi
+          
+          # Filter comments and empty lines from TSA list (|| true to handle empty result)
+          grep -v '^#' "$TSA_LIST" | grep -v '^[[:space:]]*$' > /tmp/tsas.txt || true
+          
+          # Check if we have any TSAs to query
+          TSA_COUNT=$(wc -l < /tmp/tsas.txt)
+          TSA_OK=0
+          if [ "$TSA_COUNT" -eq 0 ]; then
+            echo "::warning::No TSA endpoints configured in $TSA_LIST"
+          else
+            request_tsa() {
+              local name="$1" url="$2" tier="$3" tsq="$4" dir="$5" hash="$6"
+              # Sanitize name to prevent path traversal
+              name="${name//[^a-zA-Z0-9_-]/}"
+              [ -z "$name" ] && { echo "FAIL|invalid|0|bad_name"; return 1; }
+              # Validate tier is 1-3
+              [[ "$tier" =~ ^[1-3]$ ]] || tier=0
+              local tsr="${dir}/${hash}_${name}.tsr"
+              
+              for attempt in 1 2; do
+                # Capture HTTP code separately, let errors go to stderr
+                code=$(curl -sS \
+                  --connect-timeout 10 --max-time 25 \
+                  --retry 2 --retry-delay 2 \
+                  -H "Content-Type: application/timestamp-query" \
+                  --data-binary @"$tsq" -o "$tsr" -w "%{http_code}" "$url" 2>/dev/null) || code="000"
+                
+                if [ "$code" = "200" ] && [ -s "$tsr" ] && openssl ts -reply -in "$tsr" -text >/dev/null 2>&1; then
+                  echo "OK|$name|$tier"
+                  return 0
+                fi
+                sleep 2
+              done
+              
+              rm -f "$tsr"
+              echo "FAIL|$name|$tier|$code"
+            }
+            export -f request_tsa
+            
+            RESULTS=$(parallel --will-cite --colsep '\|' -j 4 --timeout 90 \
+              request_tsa {1} {2} {3} "$TSQ_FILE" "$PROOF_DIR" "$HASH" \
+              :::: /tmp/tsas.txt 2>/dev/null || true)
+            
+            T1=0 T2=0 T3=0 FAIL=0
+            while IFS='|' read -r status name tier extra; do
+              [ -z "$status" ] && continue
+              # Validate tier is numeric (1-3)
+              [[ "$tier" =~ ^[1-3]$ ]] || tier=0
+              if [ "$status" = "OK" ]; then
+                echo "✓ [$tier] $name"
+                # Sanitize name for JSON key (already sanitized in request_tsa, but be safe)
+                safe_name="${name//[^a-zA-Z0-9_-]/}"
+                jq '.proofs["'"$safe_name"'"] = {status: "ok", tier: '"$tier"', file: "'"${HASH}_${safe_name}.tsr"'"}' "$MANIFEST" > tmp.json && mv tmp.json "$MANIFEST"
+                case $tier in 1) T1=$((T1+1));; 2) T2=$((T2+1));; 3) T3=$((T3+1));; esac
+                TSA_OK=$((TSA_OK + 1))
+              else
+                echo "✗ [$tier] $name (HTTP $extra)"
+                FAIL=$((FAIL+1))
+              fi
+            done <<< "$RESULTS"
+            
+            echo ""
+            echo "=== Summary: Tier1=$T1 Tier2=$T2 Tier3=$T3 Failed=$FAIL ==="
+          fi
+          
+          # Warn if no proofs succeeded
+          if [ "$OTS_OK" -eq 0 ] && [ "$TSA_OK" -eq 0 ]; then
+            echo "::error::No timestamp proofs succeeded - not committing"
+            rm -f "$COMMIT_FILE" "$TSQ_FILE" "$MANIFEST"
+            exit 1
+          fi
+          
+          # FreeTSA certs (once per repo)
+          if [ -f "${PROOF_DIR}/${HASH}_freetsa.tsr" ] && [ ! -f "${PROOF_DIR}/freetsa_cacert.pem" ]; then
+            curl -sS --max-time 15 -o "${PROOF_DIR}/freetsa_tsa.crt" https://freetsa.org/files/tsa.crt || true
+            curl -sS --max-time 15 -o "${PROOF_DIR}/freetsa_cacert.pem" https://freetsa.org/files/cacert.pem || true
+          fi
+      
+      - name: Create verification script
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          PROOF_DIR="ots_proofs"
+          [ -f "${PROOF_DIR}/verify.sh" ] && exit 0
+          
+          cat > "${PROOF_DIR}/verify.sh" << 'VERIFY_SCRIPT'
+          #!/bin/bash
+          set -uo pipefail
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          
+          check_deps() {
+            local missing=()
+            command -v jq >/dev/null 2>&1 || missing+=("jq")
+            command -v openssl >/dev/null 2>&1 || missing+=("openssl")
+            if [ ${#missing[@]} -gt 0 ]; then
+              echo "Missing dependencies: ${missing[*]}"
+              echo "Install with: sudo apt-get install ${missing[*]}"
+              exit 1
+            fi
+          }
+          
+          verify() {
+            local h="$1"
+            if [ ! -f "$DIR/$h.txt" ]; then
+              echo "Not found: $h"
+              return 1
+            fi
+            echo "=== $h ==="
+            [ -f "$DIR/$h.json" ] && echo "Created: $(jq -r '.created_at // "unknown"' "$DIR/$h.json" 2>/dev/null)"
+            if [ -f "$DIR/$h.txt.ots" ]; then
+              echo ""
+              echo "--- OpenTimestamps ---"
+              if command -v ots >/dev/null 2>&1; then
+                ots verify "$DIR/$h.txt" 2>&1 | head -5 || echo "Pending or verification failed"
+              else
+                echo "ots not installed (pip install opentimestamps-client)"
+              fi
+            fi
+            for tsr in "$DIR/${h}"_*.tsr; do
+              [ -f "$tsr" ] || continue
+              name=$(basename "$tsr" .tsr | sed "s/${h}_//")
+              echo ""
+              echo "--- $name ---"
+              if [ "$name" = "freetsa" ] && [ -f "$DIR/freetsa_cacert.pem" ]; then
+                openssl ts -verify -in "$tsr" -queryfile "$DIR/$h.tsq" \
+                  -CAfile "$DIR/freetsa_cacert.pem" -untrusted "$DIR/freetsa_tsa.crt" 2>&1 | head -3
+              else
+                openssl ts -verify -in "$tsr" -queryfile "$DIR/$h.tsq" 2>&1 | head -3
+              fi
+            done
+          }
+          
+          check_deps
+          case "${1:-}" in
+            "") echo "Usage: $0 <hash|--all|--latest|--pending>" ;;
+            --all)
+              found=0
+              for f in "$DIR"/*.txt; do
+                [ -f "$f" ] || continue
+                h=$(basename "$f" .txt)
+                [[ "$h" =~ ^[a-f0-9]{40}$ ]] || continue
+                found=1; verify "$h"; echo ""
+              done
+              [ "$found" -eq 0 ] && echo "No timestamp proofs found"
+              ;;
+            --latest)
+              latest=$(find "$DIR" -maxdepth 1 -name "*.json" -type f 2>/dev/null | xargs -r ls -t | head -1)
+              if [ -z "$latest" ]; then echo "No timestamp proofs found"; exit 1; fi
+              h=$(jq -r '.commit' "$latest" 2>/dev/null)
+              if [ -z "$h" ] || [ "$h" = "null" ]; then echo "Invalid manifest: $latest"; exit 1; fi
+              verify "$h"
+              ;;
+            --pending)
+              if ! command -v ots >/dev/null 2>&1; then echo "ots not installed"; exit 1; fi
+              found=0
+              for f in "$DIR"/*.ots; do
+                [ -f "$f" ] || continue
+                ots info "$f" 2>&1 | grep -qi bitcoin || { echo "$f"; found=1; }
+              done
+              [ "$found" -eq 0 ] && echo "No pending proofs"
+              ;;
+            *) verify "$1" ;;
+          esac
+          VERIFY_SCRIPT
+          
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' "${PROOF_DIR}/verify.sh"
+          chmod +x "${PROOF_DIR}/verify.sh"
+      
+      - name: Commit proofs
+        if: steps.check.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ots_proofs/
           
           if git diff --cached --quiet; then
-            echo "No changes to commit"
+            echo "No changes"
             exit 0
           fi
           
-          git commit -m "Add OTS proof for ${{ github.sha }} [skip ci]"
+          git commit -m "Timestamp ${{ github.sha }} [skip ci]"
           
-          for i in 1 2 3; do
-            git pull --rebase origin "${{ github.ref_name }}" || true
-            if git push origin "${{ github.ref_name }}"; then
-              echo "Push successful"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "${{ github.ref_name }}" && \
+               git push origin "${{ github.ref_name }}"; then
+              echo "✓ Push successful"
               exit 0
             fi
-            echo "Push failed, retrying ($i/3)..."
-            sleep 2
+            echo "Retry $i/5..."
+            sleep $((i * i))
           done
           
-          echo "Push failed after 3 attempts"
+          echo "::error::Push failed after 5 attempts"
+          git status
+          git log -2 --oneline
           exit 1
