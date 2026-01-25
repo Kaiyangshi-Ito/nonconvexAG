@@ -1,3 +1,27 @@
+# Timestamp Commits
+#
+# Creates cryptographic timestamps for each commit using:
+# - OpenTimestamps (OTS): Bitcoin blockchain anchoring (takes ~24h to confirm)
+# - RFC 3161 TSA: Trusted timestamping authorities (immediate)
+#
+# Files created in timestamps/ for each commit:
+#   {sha}.txt      - Contains the commit hash (the data being timestamped)
+#   {sha}.txt.ots  - OpenTimestamps proof (pending until Bitcoin confirmation)
+#   {sha}.tsq      - RFC 3161 timestamp query (for verification)
+#   {sha}.json     - Manifest with metadata and proof status
+#   {sha}_{tsa}.tsr - RFC 3161 timestamp response from each TSA
+#
+# Verification:
+#   ./timestamps/verify.sh --latest        # Verify most recent commit
+#   ./timestamps/verify.sh --all           # Verify all commits
+#   ./timestamps/verify.sh {sha}           # Verify specific commit
+#   ./timestamps/verify.sh --pending       # List unconfirmed OTS proofs
+#
+# Manual verification:
+#   ots verify timestamps/{sha}.txt        # OpenTimestamps (needs ots client)
+#   openssl ts -verify -in timestamps/{sha}_{tsa}.tsr \
+#     -queryfile timestamps/{sha}.tsq      # RFC 3161 (needs CA certs)
+
 name: Timestamp Commits
 
 on:
@@ -5,7 +29,7 @@ on:
     branches:
       - '**'
     paths-ignore:
-      - 'ots_proofs/**'
+      - 'timestamps/**'
   schedule:
     - cron: '0 6 28-31 * *'
   workflow_dispatch:
@@ -13,9 +37,8 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: timestamp-${{ github.ref_name }}
-  cancel-in-progress: false
+# Job-level concurrency is used instead of workflow-level
+# because upgrade job targets default_branch regardless of trigger ref
 
 jobs:
   upgrade:
@@ -23,7 +46,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    timeout-minutes: 5
+    timeout-minutes: 10
+    concurrency:
+      group: timestamp-upgrade-${{ github.event.repository.default_branch }}
+      cancel-in-progress: false
     
     steps:
       - name: Check if should run
@@ -43,19 +69,20 @@ jobs:
         if: env.SHOULD_RUN == 'true'
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
       
       - name: Check for pending proofs
         if: env.SHOULD_RUN == 'true'
         id: check
         run: |
-          if [ ! -d "ots_proofs" ]; then
+          if [ ! -d "timestamps" ]; then
             echo "has_pending=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           
           PENDING=0
-          for f in ots_proofs/*.ots; do
+          for f in timestamps/*.ots; do
             [ -f "$f" ] || continue
             # Size prefilter: upgraded files are typically >2KB
             [ "$(wc -c < "$f")" -gt 2000 ] && continue
@@ -86,7 +113,7 @@ jobs:
           
           SCANNED=0 UPGRADED=0 SKIPPED=0 PENDING=0
           
-          for f in ots_proofs/*.ots; do
+          for f in timestamps/*.ots; do
             [ -f "$f" ] || continue
             SCANNED=$((SCANNED + 1))
             
@@ -117,7 +144,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ots_proofs/
+          git add timestamps/
           
           if git diff --cached --quiet; then
             echo "Nothing to commit"
@@ -126,13 +153,19 @@ jobs:
           
           git commit -m "Upgrade OTS proofs [skip ci]"
           
+          # Ensure we're on a proper branch (not detached HEAD) before rebase
+          BRANCH="${{ github.event.repository.default_branch }}"
+          git checkout -B "$BRANCH"
+          
           for i in 1 2 3 4 5; do
-            if git push origin HEAD; then
+            git fetch origin "$BRANCH"
+            if git rebase "origin/$BRANCH" && \
+               git push origin "HEAD:$BRANCH"; then
               echo "✓ Push successful"
               exit 0
             fi
-            echo "Retry $i/5..."
-            git pull --rebase origin HEAD || true
+            echo "Retry $i/5... resetting and retrying"
+            git rebase --abort 2>/dev/null || true
             sleep $((i * i))
           done
           
@@ -151,7 +184,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    timeout-minutes: 10
+    timeout-minutes: 15
+    concurrency:
+      group: timestamp-${{ github.ref_name }}
+      cancel-in-progress: false
     
     steps:
       - name: Checkout
@@ -163,7 +199,7 @@ jobs:
       - name: Check if already timestamped
         id: check
         run: |
-          if [ -f "ots_proofs/${{ github.sha }}.txt" ]; then
+          if [ -f "timestamps/${{ github.sha }}.txt" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -185,9 +221,9 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         run: |
           set -uo pipefail
-          [ ! -d "ots_proofs" ] && exit 0
+          [ ! -d "timestamps" ] && exit 0
           
-          for f in ots_proofs/*.ots; do
+          for f in timestamps/*.ots; do
             [ -f "$f" ] || continue
             timeout 30 ots info "$f" 2>&1 | grep -qi "bitcoin" && continue
             timeout 60 ots upgrade "$f" 2>&1 && echo "✓ Upgraded: $f" || true
@@ -201,23 +237,24 @@ jobs:
         run: |
           set -euo pipefail
           
-          PROOF_DIR="ots_proofs"
+          PROOF_DIR="timestamps"
           mkdir -p "$PROOF_DIR"
           
           COMMIT_FILE="${PROOF_DIR}/${HASH}.txt"
           TSQ_FILE="${PROOF_DIR}/${HASH}.tsq"
           MANIFEST="${PROOF_DIR}/${HASH}.json"
-          TSA_LIST=".github/tsa_endpoints.txt"
-          
           # Cleanup function
           cleanup() { rm -f tmp.json; }
           trap cleanup EXIT
           
-          # Fail fast if TSA list missing
-          if [ ! -f "$TSA_LIST" ]; then
-            echo "::error::Missing $TSA_LIST"
-            exit 1
-          fi
+          # TSA endpoints (inline to avoid *.txt gitignore issues)
+          cat > /tmp/tsas.txt << 'TSA_ENDPOINTS'
+          digicert|https://timestamp.digicert.com|1
+          sectigo|https://timestamp.sectigo.com|1
+          globalsign|https://rfc3161timestamp.globalsign.com/advanced|1
+          entrust|https://timestamp.entrust.net/TSS/RFC3161sha2TS|1
+          sigstore|https://timestamp.sigstore.dev|2
+          TSA_ENDPOINTS
           
           echo "${HASH}" > "$COMMIT_FILE"
           
@@ -248,14 +285,11 @@ jobs:
             exit 1
           fi
           
-          # Filter comments and empty lines from TSA list (|| true to handle empty result)
-          grep -v '^#' "$TSA_LIST" | grep -v '^[[:space:]]*$' > /tmp/tsas.txt || true
-          
           # Check if we have any TSAs to query
           TSA_COUNT=$(wc -l < /tmp/tsas.txt)
           TSA_OK=0
           if [ "$TSA_COUNT" -eq 0 ]; then
-            echo "::warning::No TSA endpoints configured in $TSA_LIST"
+            echo "::warning::No TSA endpoints configured"
           else
             request_tsa() {
               local name="$1" url="$2" tier="$3" tsq="$4" dir="$5" hash="$6"
@@ -318,17 +352,11 @@ jobs:
             rm -f "$COMMIT_FILE" "$TSQ_FILE" "$MANIFEST"
             exit 1
           fi
-          
-          # FreeTSA certs (once per repo)
-          if [ -f "${PROOF_DIR}/${HASH}_freetsa.tsr" ] && [ ! -f "${PROOF_DIR}/freetsa_cacert.pem" ]; then
-            curl -sS --max-time 15 -o "${PROOF_DIR}/freetsa_tsa.crt" https://freetsa.org/files/tsa.crt || true
-            curl -sS --max-time 15 -o "${PROOF_DIR}/freetsa_cacert.pem" https://freetsa.org/files/cacert.pem || true
-          fi
       
       - name: Create verification script
         if: steps.check.outputs.skip != 'true'
         run: |
-          PROOF_DIR="ots_proofs"
+          PROOF_DIR="timestamps"
           [ -f "${PROOF_DIR}/verify.sh" ] && exit 0
           
           cat > "${PROOF_DIR}/verify.sh" << 'VERIFY_SCRIPT'
@@ -369,12 +397,7 @@ jobs:
               name=$(basename "$tsr" .tsr | sed "s/${h}_//")
               echo ""
               echo "--- $name ---"
-              if [ "$name" = "freetsa" ] && [ -f "$DIR/freetsa_cacert.pem" ]; then
-                openssl ts -verify -in "$tsr" -queryfile "$DIR/$h.tsq" \
-                  -CAfile "$DIR/freetsa_cacert.pem" -untrusted "$DIR/freetsa_tsa.crt" 2>&1 | head -3
-              else
-                openssl ts -verify -in "$tsr" -queryfile "$DIR/$h.tsq" 2>&1 | head -3
-              fi
+              openssl ts -verify -in "$tsr" -queryfile "$DIR/$h.tsq" 2>&1 | head -3
             done
           }
           
@@ -420,7 +443,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ots_proofs/
+          git add timestamps/
           
           if git diff --cached --quiet; then
             echo "No changes"
@@ -429,13 +452,19 @@ jobs:
           
           git commit -m "Timestamp ${{ github.sha }} [skip ci]"
           
+          # Ensure we're on a proper branch (not detached HEAD) before rebase
+          BRANCH="${{ github.ref_name }}"
+          git checkout -B "$BRANCH"
+          
           for i in 1 2 3 4 5; do
-            if git pull --rebase origin "${{ github.ref_name }}" && \
-               git push origin "${{ github.ref_name }}"; then
+            git fetch origin "$BRANCH"
+            if git rebase "origin/$BRANCH" && \
+               git push origin "HEAD:$BRANCH"; then
               echo "✓ Push successful"
               exit 0
             fi
-            echo "Retry $i/5..."
+            echo "Retry $i/5... resetting and retrying"
+            git rebase --abort 2>/dev/null || true
             sleep $((i * i))
           done
           

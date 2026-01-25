@@ -643,3 +643,11 @@ pids
 # This creates/updates .gitattributes file which SHOULD be committed
 # The .gitattributes file tells Git LFS which files to handle
 
+
+# Timestamp proofs
+!timestamps/
+!timestamps/**
+
+# GitHub workflows
+!.github/
+!.github/**
