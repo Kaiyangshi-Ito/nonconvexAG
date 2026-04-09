@@ -1,4 +1,3 @@
-**/.DS_Store
 
 # ===========================================
 # LaTeX
@@ -10,6 +9,7 @@
 *.log
 *.lot
 *.fls
+*.out
 *.toc
 *.fmt
 *.fot
@@ -34,6 +34,9 @@
 *.synctex.gz
 *.synctex.gz(busy)
 *.pdfsync
+
+# LaTeX build output directory
+latexout/
 
 # LuaTeX
 *.run.xml
@@ -103,11 +106,8 @@
 # hyperref
 *.brf
 
-# knitr
-*-concordance.tex
-
-# Sweave (uncomment next line ONLY if want to ignore generated .tex files from Sweave)
-# *.tex
+# knitr (keeping .tex files — remove concordance only if not needed)
+# *-concordance.tex
 
 # listings
 *.lol
@@ -216,9 +216,6 @@ TSWLatexianTemp*
 # Kile
 *.backup
 
-# Exception: Always track .gitignore.backup files created by this script
-!.gitignore.backup
-
 # gummi
 .*.swp
 
@@ -307,11 +304,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
-var/
 wheels/
 share/python-wheels/
 *.egg-info/
@@ -360,6 +354,9 @@ Pipfile.lock
 
 # poetry
 poetry.lock
+
+# uv
+uv.lock
 
 # pdm
 .pdm.toml
@@ -456,14 +453,22 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# pkgdown site
-docs/
+# pkgdown site (commented out — conflicts with package docs/)
+# docs/
 
 # translation temp files
 po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# ===========================================
+# Quarto
+# ===========================================
+
+.quarto/
+_site/
+_book/
 
 # ===========================================
 # Git LFS (Large File Storage)
@@ -485,6 +490,7 @@ rsconnect/
 *.hdf5
 *.parquet
 *.feather
+*.arrow
 *.db
 *.sqlite
 *.sqlite3
@@ -494,6 +500,14 @@ rsconnect/
 *.joblib
 *.sav
 *.bin
+*.pt
+*.pth
+*.onnx
+*.safetensors
+checkpoints/
+
+# Hugging Face
+.huggingface/
 
 # Temporary/cache files
 .cache/
@@ -585,7 +599,6 @@ logs/
 # Runtime data
 pids
 *.pid
-*.seed
 *.pid.lock
 
 # Archives
@@ -641,8 +654,32 @@ pids
 # git lfs track "data/*.csv"  # for large CSV files in data folder
 #
 # This creates/updates .gitattributes file which SHOULD be committed
-# The .gitattributes file tells Git LFS which files to handle
 
+# ===========================================
+# AI Assistants — review periodically as tools evolve
+# ===========================================
+
+**/CLAUDE.md
+**/.claude/
+**/AGENTS.md
+**/.agents/
+**/GEMINI.md
+**/.gemini/
+**/COPILOT.md
+**/.copilot/
+**/.cursorrules
+**/.cursorignore
+**/.cursor/
+**/.aider*
+**/.codeium/
+**/.continue/
+**/.windsurf/
+**/.bolt/
+**/.v0/
+
+# ===========================================
+# Project-specific exceptions
+# ===========================================
 
 # Timestamp proofs
 !timestamps/
