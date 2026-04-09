@@ -6,10 +6,10 @@
 # Core LaTeX auxiliary files
 *.aux
 *.lof
-*.log
+# *.log  # commented out — could catch training/experiment/SLURM logs
 *.lot
 *.fls
-*.out
+# *.out  # commented out — needed for SLURM/seff output files
 *.toc
 *.fmt
 *.fot
@@ -70,7 +70,7 @@ latexout/
 
 # feynmf/feynmp
 *.mf
-*.mp
+# *.mp  # commented out — could catch MPEG audio or other .mp files
 *.t[1-9]
 *.t[1-9][0-9]
 *.tfm
@@ -175,7 +175,6 @@ pythontex-files-*/
 # TikZ & PGF
 *.figlist
 *.makefile
-*.figlist
 
 # todonotes
 *.tdo
@@ -214,7 +213,7 @@ TSWLatexianTemp*
 *.lyx~
 
 # Kile
-*.backup
+# *.backup  # commented out — could catch intentional backup files
 
 # gummi
 .*.swp
@@ -227,13 +226,10 @@ TSWLatexianTemp*
 
 # auto folder when using Emacs and AUCTeX
 /auto/*
-*.el
+# *.el  # commented out — could catch Emacs Lisp source files
 
 # expex forward references with \gathertags
 *-tags.tex
-
-# standalone packages
-*.sta
 
 # Makeindex log files
 *.lpz
@@ -298,13 +294,11 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+# build/  # commented out — could catch non-Python build directories
 develop-eggs/
 dist/
-downloads/
 eggs/
 .eggs/
-parts/
 sdist/
 wheels/
 share/python-wheels/
@@ -313,9 +307,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# PyInstaller
-*.manifest
-*.spec
+# PyInstaller (commented out — could conflict with RPM .spec or test .spec files)
+# *.manifest
+# *.spec
 
 # Installer logs
 pip-log.txt
@@ -342,21 +336,17 @@ cover/
 profile_default/
 ipython_config.py
 
-# IPython
-profile_default/
-ipython_config.py
-
 # pyenv
-.python-version
+# .python-version  # commented out — important for reproducibility
 
 # pipenv
-Pipfile.lock
+# Pipfile.lock  # commented out — lock files should be tracked for reproducibility
 
 # poetry
-poetry.lock
+# poetry.lock  # commented out — lock files should be tracked for reproducibility
 
 # uv
-uv.lock
+# uv.lock  # commented out — lock files should be tracked for reproducibility
 
 # pdm
 .pdm.toml
@@ -416,7 +406,7 @@ cython_debug/
 .Rapp.history
 
 # Session Data files
-.RData
+# .RData  # commented out — could contain important session data
 .RDataTmp
 
 # User-specific files
@@ -433,7 +423,7 @@ cython_debug/
 
 # RStudio files
 .Rproj.user/
-*.Rproj
+# *.Rproj  # commented out — researchers track these for reproducibility
 
 # produced vignettes
 vignettes/*.html
@@ -443,7 +433,7 @@ vignettes/*.pdf
 .httr-oauth
 
 # knitr and R markdown default cache directories
-*_cache/
+# *_cache/  # commented out — too broad, catches any *_cache/ directory
 /cache/
 
 # Temporary files created by R markdown
@@ -451,7 +441,7 @@ vignettes/*.pdf
 *.knit.md
 
 # R Environment Variables
-.Renviron
+# .Renviron  # commented out — could have project-specific non-secret settings
 
 # pkgdown site (commented out — conflicts with package docs/)
 # docs/
@@ -483,38 +473,38 @@ _book/
 # Data Science & ML
 # ===========================================
 
-# Large binary data files (consider using Git LFS for these)
-# If using Git LFS, can track these file types:
-*.tsv
-*.h5
-*.hdf5
-*.parquet
-*.feather
-*.arrow
-*.db
-*.sqlite
-*.sqlite3
+# Large binary data files (consider using Git LFS for large ones)
+# Commented out — small datasets, gene lists, results tables should be trackable
+# *.tsv
+# *.h5
+# *.hdf5
+# *.parquet
+# *.feather
+# *.arrow
+# *.db
+# *.sqlite
+# *.sqlite3
 
 # Large model files (consider using Git LFS for these)
 *.model
 *.joblib
-*.sav
-*.bin
+# *.sav  # commented out — SPSS data files
+# *.bin  # commented out — could catch word2vec or custom binary data
 *.pt
 *.pth
 *.onnx
 *.safetensors
-checkpoints/
+# checkpoints/  # commented out — too broad
 
 # Hugging Face
 .huggingface/
 
 # Temporary/cache files
 .cache/
-*_cache/
+# *_cache/  # commented out — too broad
 
-# Tensorboard logs
-logs/
+# Tensorboard logs (commented out — logs/ could catch other log directories)
+# logs/
 tensorboard/
 
 # MLflow
@@ -526,7 +516,7 @@ wandb/
 
 # DVC
 .dvc/
-.dvcignore
+# .dvcignore  # commented out — should be tracked like .gitignore
 
 # ===========================================
 # IDEs & Editors
@@ -562,11 +552,9 @@ wandb/
 # Vim
 *.swp
 *.swo
-*~
 .netrwhist
 
 # Emacs
-*~
 \#*\#
 /.emacs.desktop
 /.emacs.desktop.lock
@@ -580,7 +568,7 @@ tramp
 # ===========================================
 
 # Google Colab
-.config/
+# .config/  # commented out — too broad, catches project config directories
 
 # Azure ML
 .azureml/
@@ -592,9 +580,9 @@ tramp
 # Miscellaneous
 # ===========================================
 
-# Logs
-*.log
-logs/
+# Logs (commented out — could catch training/experiment logs)
+# *.log
+# logs/
 
 # Runtime data
 pids
@@ -604,12 +592,12 @@ pids
 # Archives
 *.7z
 *.dmg
-*.gz
+# *.gz  # commented out — compressed data files common in bioinformatics
 *.iso
 *.jar
 *.rar
-*.tar
-*.zip
+# *.tar  # commented out — could contain distributable data
+# *.zip  # commented out — could contain distributable data
 
 # ===========================================
 # Project-specific (uncomment as needed)
